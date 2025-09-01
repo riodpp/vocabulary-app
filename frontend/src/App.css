@@ -1,0 +1,494 @@
+/* General App Styles */
+.App {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f5f5f5;
+  min-height: 100vh;
+}
+
+.App h1 {
+  color: #333;
+  text-align: center;
+  margin-bottom: 30px;
+  font-size: 2.5em;
+}
+
+/* Form Styles */
+.word-form, .directory-form {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  margin-bottom: 20px;
+}
+
+.word-form form, .directory-form form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.word-form input, .word-form select, .directory-form input {
+  padding: 12px;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  font-size: 16px;
+  transition: border-color 0.3s;
+}
+
+.word-form input:focus, .word-form select:focus, .directory-form input:focus {
+  outline: none;
+  border-color: #4CAF50;
+}
+
+.word-form button, .directory-form button {
+  padding: 12px 20px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.3s;
+}
+
+.word-form button:hover, .directory-form button:hover {
+  background-color: #45a049;
+}
+
+.word-form button[type="button"] {
+  background-color: #2196F3;
+  margin-right: 10px;
+}
+
+.word-form button[type="button"]:hover {
+  background-color: #1976D2;
+}
+
+/* Directory List Styles */
+.directory-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 20px 0;
+}
+
+.directory-list li {
+  background: white;
+  padding: 15px;
+  margin-bottom: 10px;
+  border-radius: 6px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.directory-list li:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+}
+
+.directory-list li.selected {
+  background-color: #e8f5e8;
+  border-left: 4px solid #4CAF50;
+}
+
+.directory-name {
+  cursor: pointer;
+  flex: 1;
+}
+
+.delete-dir-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 25px;
+  height: 25px;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 10px;
+  transition: background-color 0.3s;
+}
+
+.delete-dir-btn:hover {
+  background: #c82333;
+}
+
+/* Flashcard Styles */
+.flashcard {
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  margin: 20px 0;
+  text-align: center;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.flashcard p {
+  font-size: 1.5em;
+  margin: 20px 0;
+  color: #333;
+}
+
+.flashcard .translation {
+  font-size: 1.2em;
+  color: #666;
+  margin-bottom: 20px;
+}
+
+.flashcard button {
+  padding: 12px 25px;
+  margin: 0 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.3s;
+}
+
+.flashcard button.show-translation {
+  background-color: #FF9800;
+  color: white;
+}
+
+.flashcard button.show-translation:hover {
+  background-color: #F57C00;
+}
+
+.flashcard button.correct {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.flashcard button.correct:hover {
+  background-color: #45a049;
+}
+
+.flashcard button.wrong {
+  background-color: #f44336;
+  color: white;
+}
+
+.flashcard button.wrong:hover {
+  background-color: #d32f2f;
+}
+
+/* Flashcard Finished State */
+.flashcard-finished {
+  background: white;
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  text-align: center;
+  max-width: 400px;
+  margin: 20px auto;
+}
+
+.flashcard-finished h3 {
+  color: #4CAF50;
+  margin: 0 0 15px 0;
+  font-size: 1.8em;
+}
+
+.flashcard-finished p {
+  color: #666;
+  margin: 0 0 25px 0;
+  font-size: 1.1em;
+}
+
+.restart-btn {
+  padding: 15px 30px;
+  background-color: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: background-color 0.3s;
+}
+
+.restart-btn:hover {
+  background-color: #1976D2;
+}
+
+/* Start Flashcard Button */
+.start-flashcard {
+  padding: 15px 30px;
+  background-color: #9C27B0;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 18px;
+  margin: 20px 0;
+  transition: background-color 0.3s;
+}
+
+.start-flashcard:hover {
+  background-color: #7B1FA2;
+}
+
+/* Directory Words Display */
+.directory-words {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  margin: 20px 0;
+}
+
+.directory-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.directory-words h2 {
+  color: #333;
+  font-size: 1.5em;
+  margin: 0;
+}
+
+.close-btn {
+  background: #f44336;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s;
+}
+
+.close-btn:hover {
+  background: #d32f2f;
+}
+
+.word-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.word-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  margin-bottom: 10px;
+  background: #f9f9f9;
+  border-radius: 6px;
+  border-left: 4px solid #4CAF50;
+}
+
+.word-item .english {
+  font-weight: bold;
+  font-size: 1.1em;
+  color: #333;
+}
+
+.word-item .indonesian {
+  color: #666;
+  font-style: italic;
+}
+
+.word-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.word-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.english-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.delete-word-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 25px;
+  height: 25px;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 10px;
+  transition: background-color 0.3s;
+}
+
+.delete-word-btn:hover {
+  background: #c82333;
+}
+
+.speak-btn {
+  background: #FFC107;
+  color: #333;
+  border: none;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+  flex-shrink: 0;
+}
+
+.speak-btn:hover {
+  background: #FFB300;
+  transform: scale(1.1);
+}
+
+.speak-btn:active {
+  transform: scale(0.95);
+}
+
+/* Edit Translation Styles */
+.translation-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.edit-btn, .ai-improve-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 5px;
+  border-radius: 4px;
+  transition: background-color 0.3s;
+  flex-shrink: 0;
+}
+
+.edit-btn:hover {
+  background-color: #e3f2fd;
+}
+
+.ai-improve-btn:hover {
+  background-color: #f3e5f5;
+}
+
+.edit-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.edit-section input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 2px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.edit-section input:focus {
+  outline: none;
+  border-color: #4CAF50;
+}
+
+.save-btn, .cancel-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.3s;
+}
+
+.save-btn {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.save-btn:hover {
+  background-color: #45a049;
+}
+
+.cancel-btn {
+  background-color: #f44336;
+  color: white;
+}
+
+.cancel-btn:hover {
+  background-color: #d32f2f;
+}
+
+.ai-btn {
+  background-color: #9C27B0;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s;
+}
+
+.ai-btn:hover {
+  background-color: #7B1FA2;
+}
+
+/* Score Display */
+.App p {
+  font-size: 1.2em;
+  color: #555;
+  text-align: center;
+  margin-top: 20px;
+}
+
+/* Responsive Design */
+@media (max-width: 600px) {
+  .App {
+    padding: 10px;
+  }
+
+  .App h1 {
+    font-size: 2em;
+  }
+
+  .word-form form, .directory-form form {
+    gap: 10px;
+  }
+
+  .flashcard {
+    padding: 20px;
+  }
+
+  .flashcard button {
+    padding: 10px 20px;
+    margin: 5px;
+  }
+}

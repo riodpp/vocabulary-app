@@ -1,0 +1,73 @@
+.directory-selection-modal {
+  max-width: 500px;
+  width: 90%;
+}
+
+.directory-selection-modal h3 {
+  margin: 0 0 10px 0;
+  color: #333;
+  font-size: 1.4em;
+}
+
+.directory-selection-modal p {
+  margin: 0 0 20px 0;
+  color: #666;
+  line-height: 1.5;
+}
+
+.directory-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 25px;
+}
+
+.directory-option {
+  display: block;
+  width: 100%;
+  padding: 16px;
+  background: #f8f9fa;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.3s;
+  text-decoration: none;
+}
+
+.directory-option:hover {
+  background: #e9ecef;
+  border-color: #4CAF50;
+  transform: translateY(-1px);
+}
+
+.directory-option.all-words {
+  background: #e8f5e8;
+  border-color: #4CAF50;
+}
+
+.directory-option.all-words:hover {
+  background: #d4edda;
+  border-color: #28a745;
+}
+
+.directory-name {
+  font-size: 1.1em;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.directory-description {
+  font-size: 0.9em;
+  color: #666;
+  margin: 0;
+}
+
+.directory-selection-modal .modal-buttons {
+  justify-content: center;
+}
+
+.directory-selection-modal .cancel-btn {
+  min-width: 120px;
+}
