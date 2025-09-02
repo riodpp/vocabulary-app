@@ -31,6 +31,7 @@ struct Progress {
 #[derive(Deserialize)]
 struct CreateWordRequest {
     english: String,
+    indonesian: Option<String>,
     directory_id: Option<i64>,
 }
 
@@ -56,8 +57,16 @@ async fn create_word(
 ) -> Result<web::Json<Word>> {
     println!("Creating word: {}", req.english);
 
-    // Translate using LibreTranslate
-    let translation = translate_text(&req.english).await.unwrap_or_else(|_| "Translation failed".to_string());
+    // Use provided translation or translate automatically
+    let translation = if let Some(indonesian) = &req.indonesian {
+        if !indonesian.trim().is_empty() {
+            indonesian.clone()
+        } else {
+            translate_text(&req.english).await.unwrap_or_else(|_| "Translation failed".to_string())
+        }
+    } else {
+        translate_text(&req.english).await.unwrap_or_else(|_| "Translation failed".to_string())
+    };
     println!("Translation for '{}': {}", req.english, translation);
 
     let conn = data.conn.lock().unwrap();
@@ -427,8 +436,8 @@ async fn main() -> IoResult<()> {
     dotenv::dotenv().ok();
     println!("Environment variables loaded");
 
-    // Create database connection - use persistent volume on Fly.io
-    let db_path = std::env::var("DATABASE_PATH").unwrap_or_else(|_| "/data/vocabulary.db".to_string());
+    // Create database connection - use persistent volume on Fly.io or local data directory
+    let db_path = std::env::var("DATABASE_PATH").unwrap_or_else(|_| "data/vocabulary.db".to_string());
     let conn = Connection::open(&db_path).expect("Failed to open database");
 
     // Create tables
@@ -521,6 +530,16 @@ async fn main() -> IoResult<()> {
                         web::Json(serde_json::json!({ "translation": translation }))
                     },
                     Err(e) => web::Json(serde_json::json!({ "error": e.to_string() }))
+                }
+            }))
+            .route("/ai-translate", web::post().to(|req: web::Json<serde_json::Value>| async move {
+                if let Some(text) = req["text"].as_str() {
+                    match improve_translation_with_ai(text).await {
+                        Ok(translation) => web::Json(serde_json::json!({ "translation": translation })),
+                        Err(e) => web::Json(serde_json::json!({ "error": e.to_string() }))
+                    }
+                } else {
+                    web::Json(serde_json::json!({ "error": "Missing 'text' field" }))
                 }
             }))
             .route("/directories", web::post().to(create_directory))

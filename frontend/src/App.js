@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import axios from 'axios';
-import WordForm from './WordForm';
-import DirectoryList from './DirectoryList';
+import Navigation from './Navigation';
+import HomePage from './HomePage';
+import DictionaryPage from './DictionaryPage';
+import NotificationContainer from './Notification';
 import FlashcardModal from './FlashcardModal';
 import ConfirmationModal from './ConfirmationModal';
 import DirectorySelectionModal from './DirectorySelectionModal';
@@ -17,8 +20,7 @@ function App() {
   const [modal, setModal] = useState({ isOpen: false, message: '', onConfirm: null });
   const [directorySelectionModal, setDirectorySelectionModal] = useState(false);
   const [flashcardModal, setFlashcardModal] = useState(false);
-  const [editingWord, setEditingWord] = useState(null);
-  const [editTranslation, setEditTranslation] = useState('');
+  const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
     // Check connectivity first
@@ -30,7 +32,7 @@ function App() {
         console.error('API not reachable. Please check your connection.');
       }
     });
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const API_BASE = process.env.REACT_APP_API_URL || 'https://vocabulary-app-backend.fly.dev';
   console.log('Using API_BASE:', API_BASE);
@@ -75,22 +77,10 @@ function App() {
   };
 
   const addWord = async (word) => {
-    try {
-      await axios.post(`${API_BASE}/words`, word);
-      fetchWords();
-    } catch (error) {
-      console.error('Error adding word:', error);
-    }
+    await axios.post(`${API_BASE}/words`, word);
+    fetchWords();
   };
 
-  const addDirectory = async (name) => {
-    try {
-      await axios.post(`${API_BASE}/directories`, { name });
-      fetchDirectories();
-    } catch (error) {
-      console.error('Error adding directory:', error);
-    }
-  };
 
   const viewDirectoryWords = (directoryId) => {
     setViewedDirectory(directoryId);
@@ -136,10 +126,6 @@ function App() {
     setModal({ isOpen: false, message: '', onConfirm: null });
   };
 
-  const speakWord = (text) => {
-    const utterance = new SpeechSynthesisUtterance(text);
-    window.speechSynthesis.speak(utterance);
-  };
 
   const showDirectorySelection = () => {
     setDirectorySelectionModal(true);
@@ -189,162 +175,103 @@ function App() {
     }
   };
 
-  const updateWordTranslation = async (wordId, newTranslation) => {
+
+  const addDirectory = async (name) => {
     try {
-      await axios.put(`${API_BASE}/words/${wordId}`, { indonesian: newTranslation });
-      fetchWords();
+      await axios.post(`${API_BASE}/directories`, { name });
+      fetchDirectories();
+      showNotification('Directory added successfully!', 'success');
     } catch (error) {
-      console.error('Error updating translation:', error);
+      console.error('Error adding directory:', error);
+      showNotification('Failed to add directory. Please try again.', 'error');
     }
   };
 
-  const improveTranslationWithAI = async (wordId) => {
-    try {
-      const response = await axios.post(`${API_BASE}/words/${wordId}/ai-translate`);
-      if (response.data.translation) {
-        await updateWordTranslation(wordId, response.data.translation);
-      }
-    } catch (error) {
-      console.error('Error improving translation with AI:', error);
-      alert('Failed to improve translation with AI. Please check your OpenRouter API key.');
-    }
+  const showNotification = (message, type = 'success', duration = 3000) => {
+    const id = Date.now() + Math.random();
+    setNotifications(prev => [...prev, { id, message, type, duration }]);
   };
 
-  const startEditing = (word) => {
-    setEditingWord(word.id);
-    setEditTranslation(word.indonesian || '');
-  };
-
-  const cancelEditing = () => {
-    setEditingWord(null);
-    setEditTranslation('');
-  };
-
-  const saveEditing = async () => {
-    if (editingWord) {
-      await updateWordTranslation(editingWord, editTranslation);
-      cancelEditing();
-    }
+  const removeNotification = (id) => {
+    setNotifications(prev => prev.filter(notification => notification.id !== id));
   };
 
   const viewedDirectoryWords = viewedDirectory ? words.filter(w => w.directory_id === viewedDirectory) : [];
   const viewedDirectoryName = viewedDirectory ? directories.find(d => d.id === viewedDirectory)?.name : '';
 
   return (
-    <div className="App">
-      <h1>Vocabulary App</h1>
-      <WordForm onAddWord={addWord} directories={directories} />
-      <DirectoryList
-        directories={directories}
-        onAddDirectory={addDirectory}
-        onSelect={setSelectedDirectory}
-        selectedDirectory={selectedDirectory}
-        onViewWords={viewDirectoryWords}
-        onDeleteDirectory={(id, name) => showDeleteModal(
-          `Are you sure you want to delete the directory "${name}" and all its words?`,
-          () => {
-            deleteDirectory(id);
-            hideDeleteModal();
-          }
-        )}
-      />
+    <Router>
+      <div className="App">
+        <Navigation />
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <HomePage
+                onAddWord={addWord}
+                directories={directories}
+                showNotification={showNotification}
+              />
+            }
+          />
+          <Route
+            path="/dictionary"
+            element={
+              <DictionaryPage
+                directories={directories}
+                words={words}
+                onDeleteWord={deleteWord}
+                onDeleteDirectory={(id, name) => showDeleteModal(
+                  `Are you sure you want to delete the directory "${name}" and all its words?`,
+                  () => {
+                    deleteDirectory(id);
+                    hideDeleteModal();
+                  }
+                )}
+                onViewWords={viewDirectoryWords}
+                viewedDirectory={viewedDirectory}
+                viewedDirectoryName={viewedDirectoryName}
+                viewedDirectoryWords={viewedDirectoryWords}
+                onRefreshWords={fetchWords}
+                onAddDirectory={addDirectory}
+                showNotification={showNotification}
+              />
+            }
+          />
+        </Routes>
 
-      {viewedDirectory && (
-        <div className="directory-words">
-          <div className="directory-header">
-            <h2>Words in "{viewedDirectoryName}"</h2>
-            <button className="close-btn" onClick={() => setViewedDirectory(null)}>×</button>
-          </div>
-          {viewedDirectoryWords.length > 0 ? (
-            <ul className="word-list">
-              {viewedDirectoryWords.map(word => (
-                <li key={word.id} className="word-item">
-                  <div className="word-content">
-                    <div className="english-section">
-                      <span className="english">{word.english}</span>
-                      <button
-                        className="speak-btn"
-                        onClick={() => speakWord(word.english)}
-                        title="Pronounce word"
-                      >
-                        🔊
-                      </button>
-                    </div>
-                    {editingWord === word.id ? (
-                      <div className="edit-section">
-                        <input
-                          type="text"
-                          value={editTranslation}
-                          onChange={(e) => setEditTranslation(e.target.value)}
-                          placeholder="Enter Indonesian translation"
-                        />
-                        <button onClick={saveEditing} className="save-btn">Save</button>
-                        <button onClick={cancelEditing} className="cancel-btn">Cancel</button>
-                        <button onClick={() => improveTranslationWithAI(word.id)} className="ai-btn" title="Improve with AI">
-                          🤖
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="translation-section">
-                        <span className="indonesian">{word.indonesian}</span>
-                        <button
-                          className="edit-btn"
-                          onClick={() => startEditing(word)}
-                          title="Edit translation"
-                        >
-                          ✏️
-                        </button>
-                        <button
-                          className="ai-improve-btn"
-                          onClick={() => improveTranslationWithAI(word.id)}
-                          title="Improve with AI"
-                        >
-                          🤖
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    className="delete-word-btn"
-                    onClick={() => deleteWord(word.id)}
-                  >
-                    ×
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>No words in this directory yet.</p>
-          )}
-        </div>
-      )}
+        <NotificationContainer
+          notifications={notifications}
+          removeNotification={removeNotification}
+        />
 
-      <button className="start-flashcard" onClick={showDirectorySelection}>Start Flashcard</button>
+        <button className="start-flashcard" onClick={showDirectorySelection}>Start Flashcard</button>
 
-      <ConfirmationModal
-        isOpen={modal.isOpen}
-        message={modal.message}
-        onConfirm={modal.onConfirm}
-        onCancel={hideDeleteModal}
-      />
+        <ConfirmationModal
+          isOpen={modal.isOpen}
+          message={modal.message}
+          onConfirm={modal.onConfirm}
+          onCancel={hideDeleteModal}
+        />
 
-      <DirectorySelectionModal
-        isOpen={directorySelectionModal}
-        directories={directories}
-        onSelect={startFlashcardWithDirectory}
-        onCancel={cancelDirectorySelection}
-      />
+        <DirectorySelectionModal
+          isOpen={directorySelectionModal}
+          directories={directories}
+          onSelect={startFlashcardWithDirectory}
+          onCancel={cancelDirectorySelection}
+        />
 
-      <FlashcardModal
-        isOpen={flashcardModal}
-        onClose={closeFlashcardModal}
-        words={flashcardWords}
-        onUpdateScore={updateScore}
-        onRestart={restartFlashcard}
-        onFinish={saveProgress}
-        score={score}
-      />
-    </div>
+        <FlashcardModal
+          isOpen={flashcardModal}
+          onClose={closeFlashcardModal}
+          words={flashcardWords}
+          onUpdateScore={updateScore}
+          onRestart={restartFlashcard}
+          onFinish={saveProgress}
+          score={score}
+        />
+      </div>
+    </Router>
   );
 }
 
