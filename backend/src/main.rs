@@ -54,8 +54,11 @@ async fn create_word(
     req: web::Json<CreateWordRequest>,
     data: web::Data<AppState>,
 ) -> Result<web::Json<Word>> {
+    println!("Creating word: {}", req.english);
+
     // Translate using LibreTranslate
     let translation = translate_text(&req.english).await.unwrap_or_else(|_| "Translation failed".to_string());
+    println!("Translation for '{}': {}", req.english, translation);
 
     let conn = data.conn.lock().unwrap();
     conn.execute(
@@ -64,6 +67,8 @@ async fn create_word(
     ).expect("Failed to insert word");
 
     let id = conn.last_insert_rowid();
+    println!("Created word with ID: {}", id);
+
     Ok(web::Json(Word {
         id: Some(id),
         english: req.english.clone(),
@@ -85,6 +90,7 @@ async fn get_words(data: web::Data<AppState>) -> Result<web::Json<Vec<Word>>> {
     }).unwrap();
 
     let words: Vec<Word> = words_iter.map(|w| w.unwrap()).collect();
+    println!("Fetched {} words from database", words.len());
     Ok(web::Json(words))
 }
 
@@ -307,7 +313,11 @@ async fn translate_text(text: &str) -> Result<String> {
 }
 
 async fn try_libretranslate(text: &str) -> Result<String> {
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .map_err(|e| actix_web::error::ErrorInternalServerError(format!("Client build error: {}", e)))?;
+
     let res = client
         .post("https://libretranslate.com/translate")
         .json(&serde_json::json!({
@@ -317,14 +327,17 @@ async fn try_libretranslate(text: &str) -> Result<String> {
         }))
         .send()
         .await
-        .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
+        .map_err(|e| actix_web::error::ErrorInternalServerError(format!("LibreTranslate request error: {}", e)))?;
 
     if !res.status().is_success() {
+        println!("LibreTranslate API error: {}", res.status());
         return Err(actix_web::error::ErrorInternalServerError("LibreTranslate API error"));
     }
 
-    let json: serde_json::Value = res.json().await.map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
-    Ok(json["translatedText"].as_str().unwrap_or("Translation failed").to_string())
+    let json: serde_json::Value = res.json().await.map_err(|e| actix_web::error::ErrorInternalServerError(format!("JSON parse error: {}", e)))?;
+    let translation = json["translatedText"].as_str().unwrap_or("Translation failed").to_string();
+    println!("LibreTranslate result: {}", translation);
+    Ok(translation)
 }
 
 async fn try_mymemory(text: &str) -> Result<String> {
@@ -411,8 +424,9 @@ async fn main() -> IoResult<()> {
     // Load environment variables
     dotenv::dotenv().ok();
 
-    // Create database connection
-    let conn = Connection::open("vocabulary.db").expect("Failed to open database");
+    // Create database connection - use persistent volume on Fly.io
+    let db_path = std::env::var("DATABASE_PATH").unwrap_or_else(|_| "vocabulary.db".to_string());
+    let conn = Connection::open(&db_path).expect("Failed to open database");
 
     // Create tables
     conn.execute(
@@ -453,15 +467,31 @@ async fn main() -> IoResult<()> {
     // Start the server
     HttpServer::new(move || {
         let cors = Cors::default()
-            .allow_any_origin()
+            .allowed_origin("https://vocabulary-app-frontend.fly.dev")
+            .allowed_origin("http://localhost:3000") // For local development
+            .allowed_origin_fn(|origin, _req_head| {
+                // Allow all origins for mobile browser compatibility
+                origin.as_bytes().starts_with(b"http")
+            })
             .allow_any_method()
-            .allow_any_header();
+            .allow_any_header()
+            .allow_credentials(true)
+            .max_age(3600); // Cache preflight for 1 hour
 
         App::new()
             .wrap(cors)
             .wrap(Logger::default())
             .app_data(app_state.clone())
             .route("/", web::get().to(|| async { "Hello from vocabulary backend!" }))
+            .route("/health", web::get().to(|| async { "OK" }))
+            .route("/db-check", web::get().to(|data: web::Data<AppState>| async move {
+                let conn = data.conn.lock().unwrap();
+                let count: Result<i64, _> = conn.query_row("SELECT COUNT(*) FROM words", [], |row| row.get(0));
+                match count {
+                    Ok(count) => web::Json(serde_json::json!({ "status": "OK", "word_count": count })),
+                    Err(e) => web::Json(serde_json::json!({ "status": "ERROR", "error": e.to_string() }))
+                }
+            }))
             .route("/words", web::post().to(create_word))
             .route("/words", web::get().to(get_words))
             .route("/words/{id}", web::put().to(update_word))

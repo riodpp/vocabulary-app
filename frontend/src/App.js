@@ -21,31 +21,60 @@ function App() {
   const [editTranslation, setEditTranslation] = useState('');
 
   useEffect(() => {
-    fetchDirectories();
-    fetchWords();
+    // Check connectivity first
+    checkConnectivity().then(isConnected => {
+      if (isConnected) {
+        fetchDirectories();
+        fetchWords();
+      } else {
+        console.error('API not reachable. Please check your connection.');
+      }
+    });
   }, []);
+
+  const API_BASE = process.env.REACT_APP_API_URL || 'https://vocabulary-app-backend.fly.dev';
+
+  // Check API connectivity
+  const checkConnectivity = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/health`, { timeout: 5000 });
+      console.log('API connectivity check:', res.data);
+      return true;
+    } catch (error) {
+      console.error('API connectivity check failed:', error);
+      return false;
+    }
+  };
 
   const fetchDirectories = async () => {
     try {
-      const res = await axios.get('http://localhost:8080/directories');
+      const res = await axios.get(`${API_BASE}/directories`, { timeout: 10000 });
       setDirectories(res.data);
     } catch (error) {
       console.error('Error fetching directories:', error);
+      // Don't show alert on mobile, just log the error
+      if (!/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+        alert('Failed to load directories. Please check your connection.');
+      }
     }
   };
 
   const fetchWords = async () => {
     try {
-      const res = await axios.get('http://localhost:8080/words');
+      const res = await axios.get(`${API_BASE}/words`, { timeout: 10000 });
       setWords(res.data);
     } catch (error) {
       console.error('Error fetching words:', error);
+      // Don't show alert on mobile, just log the error
+      if (!/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+        alert('Failed to load words. Please check your connection.');
+      }
     }
   };
 
   const addWord = async (word) => {
     try {
-      await axios.post('http://localhost:8080/words', word);
+      await axios.post(`${API_BASE}/words`, word);
       fetchWords();
     } catch (error) {
       console.error('Error adding word:', error);
@@ -54,7 +83,7 @@ function App() {
 
   const addDirectory = async (name) => {
     try {
-      await axios.post('http://localhost:8080/directories', { name });
+      await axios.post(`${API_BASE}/directories`, { name });
       fetchDirectories();
     } catch (error) {
       console.error('Error adding directory:', error);
@@ -67,7 +96,7 @@ function App() {
 
   const deleteWord = async (wordId) => {
     try {
-      await axios.delete(`http://localhost:8080/words/${wordId}`);
+      await axios.delete(`${API_BASE}/words/${wordId}`);
       fetchWords();
       // If we're viewing a directory and the deleted word was in it, refresh the view
       if (viewedDirectory) {
@@ -81,7 +110,7 @@ function App() {
 
   const deleteDirectory = async (directoryId) => {
     try {
-      await axios.delete(`http://localhost:8080/directories/${directoryId}`);
+      await axios.delete(`${API_BASE}/directories/${directoryId}`);
       fetchDirectories();
       fetchWords(); // Refresh words since directory deletion also deletes words
       // Close the viewed directory if it was the one deleted
@@ -151,7 +180,7 @@ function App() {
   const saveProgress = async (results) => {
     try {
       // Send results to backend to save progress
-      await axios.post('http://localhost:8080/progress', { results });
+      await axios.post(`${API_BASE}/progress`, { results });
       console.log('Progress saved successfully');
     } catch (error) {
       console.error('Error saving progress:', error);
@@ -160,7 +189,7 @@ function App() {
 
   const updateWordTranslation = async (wordId, newTranslation) => {
     try {
-      await axios.put(`http://localhost:8080/words/${wordId}`, { indonesian: newTranslation });
+      await axios.put(`${API_BASE}/words/${wordId}`, { indonesian: newTranslation });
       fetchWords();
     } catch (error) {
       console.error('Error updating translation:', error);
@@ -169,7 +198,7 @@ function App() {
 
   const improveTranslationWithAI = async (wordId) => {
     try {
-      const response = await axios.post(`http://localhost:8080/words/${wordId}/ai-translate`);
+      const response = await axios.post(`${API_BASE}/words/${wordId}/ai-translate`);
       if (response.data.translation) {
         await updateWordTranslation(wordId, response.data.translation);
       }
