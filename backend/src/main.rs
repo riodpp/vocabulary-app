@@ -421,11 +421,14 @@ struct AppState {
 
 #[actix_web::main]
 async fn main() -> IoResult<()> {
+    println!("Starting vocabulary backend...");
+
     // Load environment variables
     dotenv::dotenv().ok();
+    println!("Environment variables loaded");
 
     // Create database connection - use persistent volume on Fly.io
-    let db_path = std::env::var("DATABASE_PATH").unwrap_or_else(|_| "vocabulary.db".to_string());
+    let db_path = std::env::var("DATABASE_PATH").unwrap_or_else(|_| "/data/vocabulary.db".to_string());
     let conn = Connection::open(&db_path).expect("Failed to open database");
 
     // Create tables
@@ -460,9 +463,11 @@ async fn main() -> IoResult<()> {
         [],
     ).expect("Failed to create progress table");
 
-    println!("Database initialized successfully.");
+    println!("Database initialized successfully at: {}", db_path);
 
     let app_state = web::Data::new(AppState { conn: Mutex::new(conn) });
+
+    println!("Starting HTTP server on 0.0.0.0:8080");
 
     // Start the server
     HttpServer::new(move || {
@@ -475,7 +480,7 @@ async fn main() -> IoResult<()> {
             })
             .allow_any_method()
             .allow_any_header()
-            .allow_credentials(true)
+            .supports_credentials()
             .max_age(3600); // Cache preflight for 1 hour
 
         App::new()
@@ -523,7 +528,7 @@ async fn main() -> IoResult<()> {
             .route("/directories/{id}", web::delete().to(delete_directory))
             .route("/progress", web::post().to(save_progress))
     })
-    .bind("127.0.0.1:8080")?
+    .bind("0.0.0.0:8080")?
     .run()
     .await
 }

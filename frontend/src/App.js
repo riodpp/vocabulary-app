@@ -33,6 +33,8 @@ function App() {
   }, []);
 
   const API_BASE = process.env.REACT_APP_API_URL || 'https://vocabulary-app-backend.fly.dev';
+  console.log('Using API_BASE:', API_BASE);
+  console.log('Using REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
 
   // Check API connectivity
   const checkConnectivity = async () => {
