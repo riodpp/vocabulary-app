@@ -9,8 +9,26 @@ function QuickWordForm({ onAddWord, selectedDirectoryId, showNotification }) {
   const [isTranslating, setIsTranslating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [validationError, setValidationError] = useState('');
 
   const API_BASE = process.env.REACT_APP_API_URL || 'https://vocabulary-app-backend.fly.dev';
+
+  // Validation function - only allow letters, spaces, hyphens, and apostrophes
+  const validateWord = (word) => {
+    const wordRegex = /^[a-zA-Z\s\-']+$/;
+    return wordRegex.test(word) || word === '';
+  };
+
+  // Handle English word input with validation
+  const handleEnglishChange = (e) => {
+    const value = e.target.value;
+    if (validateWord(value)) {
+      setEnglish(value);
+      setValidationError('');
+    } else {
+      setValidationError('Only letters, spaces, hyphens, and apostrophes are allowed');
+    }
+  };
 
   const fetchTranslation = async (text) => {
     if (!text.trim()) return;
@@ -30,16 +48,23 @@ function QuickWordForm({ onAddWord, selectedDirectoryId, showNotification }) {
     e.preventDefault();
     if (isSubmitting) return; // Prevent multiple submissions
 
+    // Check for validation errors
+    if (validationError) {
+      showNotification('Please fix the validation errors before submitting.', 'error');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await onAddWord({
-        english,
+        english: english.toLowerCase(),
         indonesian: translation || '',
         directory_id: selectedDirectoryId
       });
       setEnglish('');
       setTranslation('');
       setShowForm(false);
+      setValidationError('');
     } catch (error) {
       console.error('Error adding word:', error);
     } finally {
@@ -70,21 +95,27 @@ function QuickWordForm({ onAddWord, selectedDirectoryId, showNotification }) {
           <input
             type="text"
             value={english}
-            onChange={e => setEnglish(e.target.value)}
+            onChange={handleEnglishChange}
             placeholder="English word"
             required
             autoFocus
+            className={validationError ? 'error' : ''}
           />
           <button
             type="button"
             className="speak-icon"
             onClick={() => speak(english)}
             title="Pronounce word"
-            disabled={!english.trim()}
+            disabled={!english.trim() || validationError}
           >
             🔊
           </button>
         </div>
+        {validationError && (
+          <div className="validation-error">
+            {validationError}
+          </div>
+        )}
         <div className="form-actions">
           <button
             type="button"
@@ -105,6 +136,7 @@ function QuickWordForm({ onAddWord, selectedDirectoryId, showNotification }) {
               setEnglish('');
               setTranslation('');
               setIsSubmitting(false);
+              setValidationError('');
             }}
           >
             Cancel
@@ -122,6 +154,12 @@ function QuickWordForm({ onAddWord, selectedDirectoryId, showNotification }) {
 }
 
 function DictionaryPage({ directories, words, onDeleteWord, onDeleteDirectory, onViewWords, viewedDirectory, viewedDirectoryName, viewedDirectoryWords, onRefreshWords, onAddDirectory, showNotification }) {
+
+  const refreshData = () => {
+    if (onRefreshWords) {
+      onRefreshWords();
+    }
+  };
   const [editingWord, setEditingWord] = useState(null);
   const [editTranslation, setEditTranslation] = useState('');
 
@@ -135,9 +173,11 @@ function DictionaryPage({ directories, words, onDeleteWord, onDeleteDirectory, o
   const updateWordTranslation = async (wordId, newTranslation) => {
     try {
       await axios.put(`${API_BASE}/words/${wordId}`, { indonesian: newTranslation });
-      // Refresh will be handled by parent component
+      // Refresh the data to reflect changes
+      refreshData();
     } catch (error) {
       console.error('Error updating translation:', error);
+      showNotification('Failed to update translation.', 'error');
     }
   };
 
@@ -146,10 +186,17 @@ function DictionaryPage({ directories, words, onDeleteWord, onDeleteDirectory, o
       const response = await axios.post(`${API_BASE}/words/${wordId}/ai-translate`);
       if (response.data.translation) {
         await updateWordTranslation(wordId, response.data.translation);
+        // Update local state if we're currently editing this word
+        if (editingWord === wordId) {
+          setEditTranslation(response.data.translation);
+        }
+        showNotification('Translation improved with AI!', 'success');
+        // Refresh data to show changes immediately
+        refreshData();
       }
     } catch (error) {
       console.error('Error improving translation with AI:', error);
-      alert('Failed to improve translation with AI. Please check your OpenRouter API key.');
+      showNotification('Failed to improve translation with AI. Please check your OpenRouter API key.', 'error');
     }
   };
 
@@ -167,6 +214,8 @@ function DictionaryPage({ directories, words, onDeleteWord, onDeleteDirectory, o
     if (editingWord) {
       await updateWordTranslation(editingWord, editTranslation);
       cancelEditing();
+      // Refresh data to show changes immediately
+      refreshData();
     }
   };
 

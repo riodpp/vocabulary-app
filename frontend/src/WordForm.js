@@ -7,8 +7,26 @@ function WordForm({ onAddWord, directories, showNotification }) {
   const [isTranslating, setIsTranslating] = useState(false);
   const [selectedDirectory, setSelectedDirectory] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [validationError, setValidationError] = useState('');
 
   const API_BASE = process.env.REACT_APP_API_URL || 'https://vocabulary-app-backend.fly.dev';
+
+  // Validation function - only allow letters, spaces, hyphens, and apostrophes
+  const validateWord = (word) => {
+    const wordRegex = /^[a-zA-Z\s\-']+$/;
+    return wordRegex.test(word) || word === '';
+  };
+
+  // Handle English word input with validation
+  const handleEnglishChange = (e) => {
+    const value = e.target.value;
+    if (validateWord(value)) {
+      setEnglish(value);
+      setValidationError('');
+    } else {
+      setValidationError('Only letters, spaces, hyphens, and apostrophes are allowed');
+    }
+  };
 
   const fetchTranslation = useCallback(async (text) => {
     if (!text.trim()) return;
@@ -30,10 +48,17 @@ function WordForm({ onAddWord, directories, showNotification }) {
     e.preventDefault();
     if (isSubmitting) return; // Prevent multiple submissions
 
+    // Check for validation errors
+    if (validationError) {
+      showNotification('Please fix the validation errors before submitting.', 'error');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
+      // Convert word to lowercase before saving
       await onAddWord({
-        english,
+        english: english.toLowerCase(),
         indonesian: translation || '',
         directory_id: selectedDirectory ? parseInt(selectedDirectory) : null
       });
@@ -58,6 +83,7 @@ function WordForm({ onAddWord, directories, showNotification }) {
     setTranslation('');
     setSelectedDirectory('');
     setIsSubmitting(false);
+    setValidationError('');
   };
 
   return (
@@ -66,20 +92,26 @@ function WordForm({ onAddWord, directories, showNotification }) {
         <div className="input-container">
           <input
             value={english}
-            onChange={e => setEnglish(e.target.value)}
+            onChange={handleEnglishChange}
             placeholder="English word"
             required
+            className={validationError ? 'error' : ''}
           />
           <button
             type="button"
             className="speak-icon"
             onClick={() => speak(english)}
             title="Pronounce word"
-            disabled={!english.trim()}
+            disabled={!english.trim() || validationError}
           >
             🔊
           </button>
         </div>
+        {validationError && (
+          <div className="validation-error">
+            {validationError}
+          </div>
+        )}
         {translation && (
           <div className="translation-preview">
             <span className="translation-label">Translation:</span>

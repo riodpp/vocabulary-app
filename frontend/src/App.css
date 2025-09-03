@@ -295,6 +295,19 @@
   color: #666;
 }
 
+/* Validation Error Styles */
+.validation-error {
+  color: #dc3545;
+  font-size: 14px;
+  margin-top: 5px;
+  font-weight: 500;
+}
+
+.input-container input.error {
+  border-color: #dc3545;
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+}
+
 .quick-word-form .translation-preview {
   margin-top: 8px;
   padding: 8px;
