@@ -6,6 +6,9 @@ function Navigation() {
 
   return (
     <nav className="main-navigation">
+      <div className="app-title">
+        <h1>Vocapp</h1>
+      </div>
       <div className="nav-container">
         <Link
           to="/"

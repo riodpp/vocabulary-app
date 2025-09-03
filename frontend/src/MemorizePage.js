@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import Flashcard from './Flashcard';
 import DirectorySelectionModal from './DirectorySelectionModal';
@@ -18,21 +18,16 @@ function MemorizePage() {
 
   const API_BASE = process.env.REACT_APP_API_URL || 'https://vocabulary-app-backend.fly.dev';
 
-  useEffect(() => {
-    fetchDirectories();
-    fetchWords();
-  }, []);
-
-  const fetchDirectories = async () => {
+  const fetchDirectories = useCallback(async () => {
     try {
       const res = await axios.get(`${API_BASE}/directories`, { timeout: 10000 });
       setDirectories(res.data);
     } catch (error) {
       console.error('Error fetching directories:', error);
     }
-  };
+  }, [API_BASE]);
 
-  const fetchWords = async () => {
+  const fetchWords = useCallback(async () => {
     try {
       const res = await axios.get(`${API_BASE}/words`, { timeout: 10000 });
       setWords(res.data);
@@ -41,7 +36,12 @@ function MemorizePage() {
       console.error('Error fetching words:', error);
       setLoading(false);
     }
-  };
+  }, [API_BASE]);
+
+  useEffect(() => {
+    fetchDirectories();
+    fetchWords();
+  }, [fetchDirectories, fetchWords]);
 
   const showDirectorySelection = () => {
     setDirectorySelectionModal(true);
@@ -109,6 +109,7 @@ function MemorizePage() {
   return (
     <div className="memorize-page">
       <h1>Memorize Words</h1>
+
       {!sessionStarted ? (
         <div className="start-section">
           <button className="start-flashcard-btn" onClick={showDirectorySelection}>
