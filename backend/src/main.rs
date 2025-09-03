@@ -20,9 +20,31 @@ struct Word {
 }
 
 #[derive(Serialize, Deserialize)]
+struct Session {
+    id: Option<i64>,
+    directory_id: Option<i64>,
+    total_words: i32,
+    correct: i32,
+    wrong: i32,
+    created_at: Option<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct SessionHistory {
+    id: i64,
+    directory_name: Option<String>,
+    total_words: i32,
+    correct: i32,
+    wrong: i32,
+    score_percentage: f64,
+    created_at: String,
+}
+
+#[derive(Serialize, Deserialize)]
 struct Progress {
     id: Option<i64>,
     word_id: i64,
+    session_id: Option<i64>,
     correct: i32,
     wrong: i32,
     last_reviewed: Option<String>,
@@ -37,6 +59,8 @@ struct CreateWordRequest {
 
 #[derive(Deserialize)]
 struct ProgressRequest {
+    directory_id: Option<i64>,
+    total_words: i32,
     results: Vec<ProgressResult>,
 }
 
@@ -171,44 +195,77 @@ async fn save_progress(
 ) -> Result<web::Json<String>> {
     let conn = data.conn.lock().unwrap();
 
-    for result in &req.results {
-        // Check if progress record exists for this word
-        let existing: Result<i32, _> = conn.query_row(
-            "SELECT COUNT(*) FROM progress WHERE word_id = ?",
-            [result.word_id],
-            |row| row.get(0)
-        );
+    // Calculate totals
+    let correct_count = req.results.iter().filter(|r| r.correct).count() as i32;
+    let wrong_count = req.results.len() as i32 - correct_count;
 
-        match existing {
-            Ok(count) if count > 0 => {
-                // Update existing progress
-                if result.correct {
-                    conn.execute(
-                        "UPDATE progress SET correct = correct + 1, last_reviewed = datetime('now') WHERE word_id = ?",
-                        [result.word_id]
-                    ).expect("Failed to update progress");
-                } else {
-                    conn.execute(
-                        "UPDATE progress SET wrong = wrong + 1, last_reviewed = datetime('now') WHERE word_id = ?",
-                        [result.word_id]
-                    ).expect("Failed to update progress");
-                }
-            },
-            _ => {
-                // Insert new progress record
-                conn.execute(
-                    "INSERT INTO progress (word_id, correct, wrong, last_reviewed) VALUES (?, ?, ?, datetime('now'))",
-                    rusqlite::params![
-                        result.word_id,
-                        if result.correct { 1 } else { 0 },
-                        if result.correct { 0 } else { 1 }
-                    ]
-                ).expect("Failed to insert progress");
-            }
-        }
+    // Create new session
+    conn.execute(
+        "INSERT INTO sessions (directory_id, total_words, correct, wrong, created_at) VALUES (?, ?, ?, ?, datetime('now'))",
+        rusqlite::params![req.directory_id, req.total_words, correct_count, wrong_count],
+    ).expect("Failed to insert session");
+
+    let session_id = conn.last_insert_rowid();
+
+    // Save progress for each word linked to the session
+    for result in &req.results {
+        conn.execute(
+            "INSERT INTO progress (word_id, session_id, correct, wrong, last_reviewed) VALUES (?, ?, ?, ?, datetime('now'))",
+            rusqlite::params![
+                result.word_id,
+                session_id,
+                if result.correct { 1 } else { 0 },
+                if result.correct { 0 } else { 1 }
+            ]
+        ).expect("Failed to insert progress");
     }
 
     Ok(web::Json("Progress saved successfully".to_string()))
+}
+
+async fn get_session_history(
+    query: web::Query<std::collections::HashMap<String, String>>,
+    data: web::Data<AppState>,
+) -> Result<web::Json<Vec<SessionHistory>>> {
+    let conn = data.conn.lock().unwrap();
+
+    // Get page parameter, default to 1
+    let page = query.get("page").and_then(|p| p.parse::<i64>().ok()).unwrap_or(1);
+    let limit = 15;
+    let offset = (page - 1) * limit;
+
+    let mut stmt = conn.prepare(
+        "SELECT s.id, d.name, s.total_words, s.correct, s.wrong, s.created_at
+         FROM sessions s
+         LEFT JOIN directories d ON s.directory_id = d.id
+         ORDER BY s.created_at DESC
+         LIMIT ? OFFSET ?"
+    ).unwrap();
+
+    let session_iter = stmt.query_map([limit, offset], |row| {
+        let total_words: i32 = row.get(2)?;
+        let correct: i32 = row.get(3)?;
+        let wrong: i32 = row.get(4)?;
+        let score_percentage = if total_words > 0 {
+            (correct as f64 / total_words as f64) * 100.0
+        } else {
+            0.0
+        };
+
+        Ok(SessionHistory {
+            id: row.get(0)?,
+            directory_name: row.get(1)?,
+            total_words,
+            correct,
+            wrong,
+            score_percentage,
+            created_at: row.get(5)?,
+        })
+    }).unwrap();
+
+    let sessions: Vec<SessionHistory> = session_iter.map(|s| s.unwrap()).collect();
+
+    Ok(web::Json(sessions))
 }
 
 async fn update_word(
@@ -461,13 +518,28 @@ async fn main() -> IoResult<()> {
     ).expect("Failed to create words table");
 
     conn.execute(
+        "CREATE TABLE IF NOT EXISTS sessions (
+            id INTEGER PRIMARY KEY,
+            directory_id INTEGER,
+            total_words INTEGER,
+            correct INTEGER DEFAULT 0,
+            wrong INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(directory_id) REFERENCES directories(id)
+        )",
+        [],
+    ).expect("Failed to create sessions table");
+
+    conn.execute(
         "CREATE TABLE IF NOT EXISTS progress (
             id INTEGER PRIMARY KEY,
             word_id INTEGER,
+            session_id INTEGER,
             correct INTEGER DEFAULT 0,
             wrong INTEGER DEFAULT 0,
             last_reviewed DATETIME,
-            FOREIGN KEY(word_id) REFERENCES words(id)
+            FOREIGN KEY(word_id) REFERENCES words(id),
+            FOREIGN KEY(session_id) REFERENCES sessions(id)
         )",
         [],
     ).expect("Failed to create progress table");
@@ -546,6 +618,7 @@ async fn main() -> IoResult<()> {
             .route("/directories", web::get().to(get_directories))
             .route("/directories/{id}", web::delete().to(delete_directory))
             .route("/progress", web::post().to(save_progress))
+            .route("/sessions", web::get().to(get_session_history))
     })
     .bind("0.0.0.0:8080")?
     .run()

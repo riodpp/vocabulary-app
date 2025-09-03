@@ -39,6 +39,15 @@
   background: #e9ecef;
   border-color: #4CAF50;
   transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.directory-option:focus {
+  outline: none;
+  background: #e9ecef;
+  border-color: #4CAF50;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .directory-option.all-words {
@@ -49,6 +58,14 @@
 .directory-option.all-words:hover {
   background: #d4edda;
   border-color: #28a745;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.directory-option.all-words:focus {
+  outline: none;
+  background: #d4edda;
+  border-color: #28a745;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .directory-name {

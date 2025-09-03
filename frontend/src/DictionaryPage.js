@@ -7,6 +7,7 @@ function QuickWordForm({ onAddWord, selectedDirectoryId, showNotification }) {
   const [english, setEnglish] = useState('');
   const [translation, setTranslation] = useState('');
   const [isTranslating, setIsTranslating] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
   const API_BASE = process.env.REACT_APP_API_URL || 'https://vocabulary-app-backend.fly.dev';
@@ -25,16 +26,25 @@ function QuickWordForm({ onAddWord, selectedDirectoryId, showNotification }) {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onAddWord({
-      english,
-      indonesian: translation || '',
-      directory_id: selectedDirectoryId
-    });
-    setEnglish('');
-    setTranslation('');
-    setShowForm(false);
+    if (isSubmitting) return; // Prevent multiple submissions
+
+    setIsSubmitting(true);
+    try {
+      await onAddWord({
+        english,
+        indonesian: translation || '',
+        directory_id: selectedDirectoryId
+      });
+      setEnglish('');
+      setTranslation('');
+      setShowForm(false);
+    } catch (error) {
+      console.error('Error adding word:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const speak = (text) => {
@@ -84,8 +94,8 @@ function QuickWordForm({ onAddWord, selectedDirectoryId, showNotification }) {
           >
             {isTranslating ? 'Translating...' : 'Translate'}
           </button>
-          <button type="submit" disabled={!english.trim()}>
-            Add Word
+          <button type="submit" disabled={!english.trim() || isSubmitting}>
+            {isSubmitting ? 'Adding...' : 'Add Word'}
           </button>
           <button
             type="button"
@@ -94,6 +104,7 @@ function QuickWordForm({ onAddWord, selectedDirectoryId, showNotification }) {
               setShowForm(false);
               setEnglish('');
               setTranslation('');
+              setIsSubmitting(false);
             }}
           >
             Cancel

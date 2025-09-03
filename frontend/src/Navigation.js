@@ -19,6 +19,12 @@ function Navigation() {
         >
           📚 My Dictionary
         </Link>
+        <Link
+          to="/memorize"
+          className={`nav-link ${location.pathname === '/memorize' ? 'active' : ''}`}
+        >
+          🧠 Memorize
+        </Link>
       </div>
     </nav>
   );

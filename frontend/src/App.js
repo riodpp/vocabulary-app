@@ -4,10 +4,9 @@ import axios from 'axios';
 import Navigation from './Navigation';
 import HomePage from './HomePage';
 import DictionaryPage from './DictionaryPage';
+import MemorizePage from './MemorizePage';
 import NotificationContainer from './Notification';
-import FlashcardModal from './FlashcardModal';
 import ConfirmationModal from './ConfirmationModal';
-import DirectorySelectionModal from './DirectorySelectionModal';
 import './App.css';
 
 function App() {
@@ -15,11 +14,7 @@ function App() {
   const [words, setWords] = useState([]);
   const [selectedDirectory, setSelectedDirectory] = useState(null);
   const [viewedDirectory, setViewedDirectory] = useState(null);
-  const [flashcardWords, setFlashcardWords] = useState([]);
-  const [score, setScore] = useState({ correct: 0, wrong: 0 });
   const [modal, setModal] = useState({ isOpen: false, message: '', onConfirm: null });
-  const [directorySelectionModal, setDirectorySelectionModal] = useState(false);
-  const [flashcardModal, setFlashcardModal] = useState(false);
   const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
@@ -127,53 +122,6 @@ function App() {
   };
 
 
-  const showDirectorySelection = () => {
-    setDirectorySelectionModal(true);
-  };
-
-  const startFlashcardWithDirectory = (directoryId) => {
-    const filteredWords = directoryId ? words.filter(w => w.directory_id === directoryId) : words;
-    setFlashcardWords(filteredWords);
-    setScore({ correct: 0, wrong: 0 });
-    setDirectorySelectionModal(false);
-    setFlashcardModal(true);
-  };
-
-  const cancelDirectorySelection = () => {
-    setDirectorySelectionModal(false);
-  };
-
-  const restartFlashcard = () => {
-    // Reset flashcard state to start over
-    setFlashcardWords([]);
-    setScore({ correct: 0, wrong: 0 });
-    setFlashcardModal(false);
-    // Show directory selection again
-    setDirectorySelectionModal(true);
-  };
-
-  const closeFlashcardModal = () => {
-    setFlashcardModal(false);
-    setFlashcardWords([]);
-    setScore({ correct: 0, wrong: 0 });
-  };
-
-  const updateScore = (isCorrect) => {
-    setScore(prev => ({
-      correct: prev.correct + (isCorrect ? 1 : 0),
-      wrong: prev.wrong + (isCorrect ? 0 : 1)
-    }));
-  };
-
-  const saveProgress = async (results) => {
-    try {
-      // Send results to backend to save progress
-      await axios.post(`${API_BASE}/progress`, { results });
-      console.log('Progress saved successfully');
-    } catch (error) {
-      console.error('Error saving progress:', error);
-    }
-  };
 
 
   const addDirectory = async (name) => {
@@ -238,14 +186,16 @@ function App() {
               />
             }
           />
+          <Route
+            path="/memorize"
+            element={<MemorizePage />}
+          />
         </Routes>
 
         <NotificationContainer
           notifications={notifications}
           removeNotification={removeNotification}
         />
-
-        <button className="start-flashcard" onClick={showDirectorySelection}>Start Flashcard</button>
 
         <ConfirmationModal
           isOpen={modal.isOpen}
@@ -254,22 +204,6 @@ function App() {
           onCancel={hideDeleteModal}
         />
 
-        <DirectorySelectionModal
-          isOpen={directorySelectionModal}
-          directories={directories}
-          onSelect={startFlashcardWithDirectory}
-          onCancel={cancelDirectorySelection}
-        />
-
-        <FlashcardModal
-          isOpen={flashcardModal}
-          onClose={closeFlashcardModal}
-          words={flashcardWords}
-          onUpdateScore={updateScore}
-          onRestart={restartFlashcard}
-          onFinish={saveProgress}
-          score={score}
-        />
       </div>
     </Router>
   );

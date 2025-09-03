@@ -6,6 +6,7 @@ function WordForm({ onAddWord, directories, showNotification }) {
   const [translation, setTranslation] = useState('');
   const [isTranslating, setIsTranslating] = useState(false);
   const [selectedDirectory, setSelectedDirectory] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const API_BASE = process.env.REACT_APP_API_URL || 'https://vocabulary-app-backend.fly.dev';
 
@@ -27,6 +28,9 @@ function WordForm({ onAddWord, directories, showNotification }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return; // Prevent multiple submissions
+
+    setIsSubmitting(true);
     try {
       await onAddWord({
         english,
@@ -34,18 +38,26 @@ function WordForm({ onAddWord, directories, showNotification }) {
         directory_id: selectedDirectory ? parseInt(selectedDirectory) : null
       });
       showNotification('Word added successfully!', 'success');
-      setEnglish('');
-      setTranslation('');
-      setSelectedDirectory('');
+      resetForm();
     } catch (error) {
       console.error('Error adding word:', error);
       showNotification('Failed to add word. Please try again.', 'error');
+      setIsSubmitting(false); // Reset on error
+    } finally {
+      // Keep the finally block for any cleanup if needed
     }
   };
 
   const speak = (text) => {
     const utterance = new SpeechSynthesisUtterance(text);
     window.speechSynthesis.speak(utterance);
+  };
+
+  const resetForm = () => {
+    setEnglish('');
+    setTranslation('');
+    setSelectedDirectory('');
+    setIsSubmitting(false);
   };
 
   return (
@@ -96,7 +108,9 @@ function WordForm({ onAddWord, directories, showNotification }) {
           >
             {isTranslating ? 'Translating...' : 'Translate'}
           </button>
-          <button type="submit" disabled={!english.trim()}>Add Word</button>
+          <button type="submit" disabled={!english.trim() || isSubmitting}>
+            {isSubmitting ? 'Adding...' : 'Add Word'}
+          </button>
         </div>
       </form>
     </div>

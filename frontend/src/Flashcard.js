@@ -4,11 +4,22 @@ function Flashcard({ words, onUpdateScore, onRestart, onFinish, score }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showTranslation, setShowTranslation] = useState(false);
   const [results, setResults] = useState([]);
+  const [finished, setFinished] = useState(false);
+
+  // Reset state when restarting
+  const handleRestart = () => {
+    setCurrentIndex(0);
+    setShowTranslation(false);
+    setResults([]);
+    setFinished(false);
+    if (onRestart) onRestart();
+  };
 
   if (currentIndex >= words.length) {
-    // Call onFinish with results when flashcard is complete
-    if (onFinish && results.length === words.length) {
+    // Call onFinish with results when flashcard is complete (only once)
+    if (onFinish && results.length === words.length && !finished) {
       onFinish(results);
+      setFinished(true);
     }
 
     return (
@@ -16,7 +27,7 @@ function Flashcard({ words, onUpdateScore, onRestart, onFinish, score }) {
         <h3>🎉 Flashcard Complete!</h3>
         <p>You've reviewed all {words.length} words.</p>
         <p>Score: Correct {score.correct}, Wrong {score.wrong}</p>
-        <button className="restart-btn" onClick={onRestart}>Start Again</button>
+        <button className="restart-btn" onClick={handleRestart}>Start Again</button>
       </div>
     );
   }
