@@ -1,15 +1,16 @@
 import React, { useState, useCallback } from 'react';
 import axios from 'axios';
 
-function WordForm({ onAddWord, directories, showNotification }) {
+function WordForm({ onAddWord, directories, showNotification, isEnglish }) {
   const [word, setWord] = useState('');
   const [english, setEnglish] = useState('');
   const [translation, setTranslation] = useState('');
   const [isTranslating, setIsTranslating] = useState(false);
-  const [selectedDirectory, setSelectedDirectory] = useState('');
+  const [selectedDirectory, setSelectedDirectory] = useState(() => {
+    return localStorage.getItem('selectedDirectory') || '';
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState('');
-  const [isEnglish, setIsEnglish] = useState(true);
 
   const API_BASE = process.env.REACT_APP_API_URL || 'https://vocabulary-app-backend.fly.dev';
 
@@ -102,10 +103,9 @@ function WordForm({ onAddWord, directories, showNotification }) {
     setWord('');
     setEnglish('');
     setTranslation('');
-    setSelectedDirectory('');
+    // Keep selectedDirectory persistent
     setIsSubmitting(false);
     setValidationError('');
-    setIsEnglish(true);
   };
 
   return (
@@ -145,7 +145,11 @@ function WordForm({ onAddWord, directories, showNotification }) {
           <select
             id="directory-select"
             value={selectedDirectory}
-            onChange={(e) => setSelectedDirectory(e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+              setSelectedDirectory(value);
+              localStorage.setItem('selectedDirectory', value);
+            }}
             className={!selectedDirectory ? 'error' : ''}
           >
             <option value="">Select a directory...</option>
@@ -158,15 +162,6 @@ function WordForm({ onAddWord, directories, showNotification }) {
               📁 Choose a directory to organize your vocabulary words
             </div>
           )}
-        </div>
-        <div className="language-toggle">
-          <button
-            type="button"
-            onClick={() => setIsEnglish(!isEnglish)}
-            className="toggle-btn"
-          >
-            {isEnglish ? 'Switch to Bahasa Indonesia' : 'Switch to English'}
-          </button>
         </div>
         <div className="form-buttons">
           <button

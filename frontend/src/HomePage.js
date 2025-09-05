@@ -1,12 +1,39 @@
-import React from 'react';
+import React, { useState } from 'react';
 import WordForm from './WordForm';
 
 function HomePage({ onAddWord, directories, showNotification }) {
+  const [isEnglish, setIsEnglish] = useState(true);
+  const [isFlipping, setIsFlipping] = useState(false);
+
+  const handleLanguageToggle = () => {
+    setIsFlipping(true);
+    setTimeout(() => {
+      setIsEnglish(!isEnglish);
+      setIsFlipping(false);
+    }, 150); // Half of animation duration
+  };
+
   return (
     <div className="home-page">
       <h1>Add New Words</h1>
+      <div className="language-toggle-container">
+        <button
+          onClick={handleLanguageToggle}
+          className={`language-toggle-btn ${isEnglish ? 'english' : 'indonesian'}`}
+          disabled={isFlipping}
+        >
+          {isEnglish ? '🇺🇸 English' : '🇮🇩 Bahasa Indonesia'}
+        </button>
+      </div>
       <div className="centered-content">
-        <WordForm onAddWord={onAddWord} directories={directories} showNotification={showNotification} />
+        <div className={`word-form-container ${isFlipping ? 'flipping' : ''}`}>
+          <WordForm
+            onAddWord={onAddWord}
+            directories={directories}
+            showNotification={showNotification}
+            isEnglish={isEnglish}
+          />
+        </div>
       </div>
     </div>
   );
