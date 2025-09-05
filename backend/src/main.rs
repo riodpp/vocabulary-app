@@ -295,7 +295,7 @@ async fn update_word(
     Ok(web::Json(word))
 }
 
-async fn improve_translation_with_ai(text: &str) -> Result<String> {
+async fn improve_translation_with_ai(text: &str, from: &str, to: &str) -> Result<String> {
     let client = reqwest::Client::new();
     let api_key = std::env::var("OPENROUTER_API_KEY").unwrap_or_else(|_| "".to_string());
 
@@ -303,7 +303,18 @@ async fn improve_translation_with_ai(text: &str) -> Result<String> {
         return Err(actix_web::error::ErrorInternalServerError("OpenRouter API key not configured"));
     }
 
-    let prompt = format!("Translate the English word '{}' to Indonesian. Provide only the Indonesian translation, no additional text or explanation.", text);
+    let from_lang = match from {
+        "en" => "English",
+        "id" => "Indonesian",
+        _ => "English",
+    };
+    let to_lang = match to {
+        "en" => "English",
+        "id" => "Indonesian",
+        _ => "Indonesian",
+    };
+
+    let prompt = format!("Translate the {} word '{}' to {}. Provide only the {} translation, no additional text or explanation.", from_lang, text, to_lang, to_lang);
 
     let res = client
         .post("https://openrouter.ai/api/v1/chat/completions")
@@ -319,6 +330,48 @@ async fn improve_translation_with_ai(text: &str) -> Result<String> {
             ],
             "max_tokens": 100,
             "temperature": 0.1
+        }))
+        .send()
+        .await
+        .map_err(|e| actix_web::error::ErrorInternalServerError(format!("OpenRouter API error: {}", e)))?;
+
+    if !res.status().is_success() {
+        return Err(actix_web::error::ErrorInternalServerError("OpenRouter API request failed"));
+    }
+
+    let json: serde_json::Value = res.json().await.map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
+
+    if let Some(content) = json["choices"][0]["message"]["content"].as_str() {
+        Ok(content.trim().to_string())
+    } else {
+        Err(actix_web::error::ErrorInternalServerError("Invalid response format from OpenRouter"))
+    }
+}
+
+async fn explain_sentence_with_ai(sentence: &str) -> Result<String> {
+    let client = reqwest::Client::new();
+    let api_key = std::env::var("OPENROUTER_API_KEY").unwrap_or_else(|_| "".to_string());
+
+    if api_key.is_empty() {
+        return Err(actix_web::error::ErrorInternalServerError("OpenRouter API key not configured"));
+    }
+
+    let prompt = format!("Explain the meaning of this English sentence in Indonesian: '{}'. Provide a clear and concise explanation in Indonesian.", sentence);
+
+    let res = client
+        .post("https://openrouter.ai/api/v1/chat/completions")
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .json(&serde_json::json!({
+            "model": "anthropic/claude-3-haiku",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            "max_tokens": 300,
+            "temperature": 0.3
         }))
         .send()
         .await
@@ -591,7 +644,7 @@ async fn main() -> IoResult<()> {
                 let english: String = stmt.query_row([word_id], |row| row.get(0)).unwrap_or_else(|_| "unknown".to_string());
 
                 // Get AI translation
-                match improve_translation_with_ai(&english).await {
+                match improve_translation_with_ai(&english, "en", "id").await {
                     Ok(translation) => {
                         // Update the word with AI translation
                         conn.execute(
@@ -606,12 +659,24 @@ async fn main() -> IoResult<()> {
             }))
             .route("/ai-translate", web::post().to(|req: web::Json<serde_json::Value>| async move {
                 if let Some(text) = req["text"].as_str() {
-                    match improve_translation_with_ai(text).await {
+                    let from = req["from"].as_str().unwrap_or("en");
+                    let to = req["to"].as_str().unwrap_or("id");
+                    match improve_translation_with_ai(text, from, to).await {
                         Ok(translation) => web::Json(serde_json::json!({ "translation": translation })),
                         Err(e) => web::Json(serde_json::json!({ "error": e.to_string() }))
                     }
                 } else {
                     web::Json(serde_json::json!({ "error": "Missing 'text' field" }))
+                }
+            }))
+            .route("/explain-sentence", web::post().to(|req: web::Json<serde_json::Value>| async move {
+                if let Some(sentence) = req["sentence"].as_str() {
+                    match explain_sentence_with_ai(sentence).await {
+                        Ok(explanation) => web::Json(serde_json::json!({ "explanation": explanation })),
+                        Err(e) => web::Json(serde_json::json!({ "error": e.to_string() }))
+                    }
+                } else {
+                    web::Json(serde_json::json!({ "error": "Missing 'sentence' field" }))
                 }
             }))
             .route("/directories", web::post().to(create_directory))

@@ -52,6 +52,13 @@ function Navigation() {
         >
           🧠 Memorize
         </Link>
+        <Link
+          to="/sentence-explanation"
+          className={`nav-link ${location.pathname === '/sentence-explanation' ? 'active' : ''}`}
+          onClick={closeMenu}
+        >
+          💬 Explain Sentences
+        </Link>
       </div>
     </nav>
   );

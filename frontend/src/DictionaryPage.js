@@ -54,6 +54,12 @@ function QuickWordForm({ onAddWord, selectedDirectoryId, showNotification }) {
       return;
     }
 
+    // Check if directory is selected (should always be true for QuickWordForm, but safety check)
+    if (!selectedDirectoryId) {
+      showNotification('No directory selected. Please select a directory first.', 'error');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await onAddWord({
@@ -125,7 +131,7 @@ function QuickWordForm({ onAddWord, selectedDirectoryId, showNotification }) {
           >
             {isTranslating ? 'Translating...' : 'Translate'}
           </button>
-          <button type="submit" disabled={!english.trim() || isSubmitting}>
+          <button type="submit" disabled={!english.trim() || !selectedDirectoryId || isSubmitting || validationError}>
             {isSubmitting ? 'Adding...' : 'Add Word'}
           </button>
           <button

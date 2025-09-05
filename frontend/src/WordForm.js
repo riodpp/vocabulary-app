@@ -2,12 +2,14 @@ import React, { useState, useCallback } from 'react';
 import axios from 'axios';
 
 function WordForm({ onAddWord, directories, showNotification }) {
+  const [word, setWord] = useState('');
   const [english, setEnglish] = useState('');
   const [translation, setTranslation] = useState('');
   const [isTranslating, setIsTranslating] = useState(false);
   const [selectedDirectory, setSelectedDirectory] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState('');
+  const [isEnglish, setIsEnglish] = useState(true);
 
   const API_BASE = process.env.REACT_APP_API_URL || 'https://vocabulary-app-backend.fly.dev';
 
@@ -17,22 +19,23 @@ function WordForm({ onAddWord, directories, showNotification }) {
     return wordRegex.test(word) || word === '';
   };
 
-  // Handle English word input with validation
-  const handleEnglishChange = (e) => {
+  // Handle word input with validation
+  const handleWordChange = (e) => {
     const value = e.target.value;
     if (validateWord(value)) {
-      setEnglish(value);
+      setWord(value);
       setValidationError('');
     } else {
       setValidationError('Only letters, spaces, hyphens, and apostrophes are allowed');
     }
   };
 
-  const fetchTranslation = useCallback(async (text) => {
+
+  const fetchTranslation = useCallback(async (text, from = 'en', to = 'id') => {
     if (!text.trim()) return;
     setIsTranslating(true);
     try {
-      const response = await axios.post(`${API_BASE}/ai-translate`, { text });
+      const response = await axios.post(`${API_BASE}/ai-translate`, { text, from, to });
       setTranslation(response.data.translation || '');
     } catch (error) {
       console.error('Error fetching translation:', error);
@@ -54,12 +57,29 @@ function WordForm({ onAddWord, directories, showNotification }) {
       return;
     }
 
+    // Check if directory is selected
+    if (!selectedDirectory) {
+      showNotification('Please select a directory before saving the word.', 'error');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      // Convert word to lowercase before saving
+      let englishWord = word;
+      let indonesianWord = translation || '';
+
+      if (!isEnglish) {
+        // Translate Indonesian to English
+        await fetchTranslation(word, 'id', 'en');
+        englishWord = translation.toLowerCase(); // Assuming translation is now English
+        indonesianWord = word; // Original Indonesian
+      } else {
+        englishWord = word.toLowerCase();
+      }
+
       await onAddWord({
-        english: english.toLowerCase(),
-        indonesian: translation || '',
+        english: englishWord,
+        indonesian: indonesianWord,
         directory_id: selectedDirectory ? parseInt(selectedDirectory) : null
       });
       showNotification('Word added successfully!', 'success');
@@ -79,11 +99,13 @@ function WordForm({ onAddWord, directories, showNotification }) {
   };
 
   const resetForm = () => {
+    setWord('');
     setEnglish('');
     setTranslation('');
     setSelectedDirectory('');
     setIsSubmitting(false);
     setValidationError('');
+    setIsEnglish(true);
   };
 
   return (
@@ -91,18 +113,18 @@ function WordForm({ onAddWord, directories, showNotification }) {
       <form onSubmit={handleSubmit}>
         <div className="input-container">
           <input
-            value={english}
-            onChange={handleEnglishChange}
-            placeholder="English word"
+            value={word}
+            onChange={handleWordChange}
+            placeholder={isEnglish ? "English word" : "Kata Bahasa Indonesia"}
             required
             className={validationError ? 'error' : ''}
           />
           <button
             type="button"
             className="speak-icon"
-            onClick={() => speak(english)}
+            onClick={() => speak(word)}
             title="Pronounce word"
-            disabled={!english.trim() || validationError}
+            disabled={!word.trim() || validationError}
           >
             🔊
           </button>
@@ -119,28 +141,52 @@ function WordForm({ onAddWord, directories, showNotification }) {
           </div>
         )}
         <div className="directory-selector">
-          <label htmlFor="directory-select">Save to Directory:</label>
+          <label htmlFor="directory-select">Save to Directory: <span className="required">*</span></label>
           <select
             id="directory-select"
             value={selectedDirectory}
             onChange={(e) => setSelectedDirectory(e.target.value)}
+            className={!selectedDirectory ? 'error' : ''}
           >
-            <option value="">No directory</option>
+            <option value="">Select a directory...</option>
             {directories.map(d => (
               <option key={d.id} value={d.id}>{d.name}</option>
             ))}
           </select>
+          {!selectedDirectory && (
+            <div className="directory-hint">
+              📁 Choose a directory to organize your vocabulary words
+            </div>
+          )}
+        </div>
+        <div className="language-toggle">
+          <button
+            type="button"
+            onClick={() => setIsEnglish(!isEnglish)}
+            className="toggle-btn"
+          >
+            {isEnglish ? 'Switch to Bahasa Indonesia' : 'Switch to English'}
+          </button>
         </div>
         <div className="form-buttons">
           <button
             type="button"
             className="translate-btn"
-            onClick={() => fetchTranslation(english)}
-            disabled={!english.trim() || isTranslating}
+            onClick={() => fetchTranslation(word, isEnglish ? 'en' : 'id', isEnglish ? 'id' : 'en')}
+            disabled={!word.trim() || isTranslating}
           >
             {isTranslating ? 'Translating...' : 'Translate'}
           </button>
-          <button type="submit" disabled={!english.trim() || isSubmitting}>
+          <button
+            type="submit"
+            disabled={!word.trim() || !selectedDirectory || isSubmitting || validationError}
+            onClick={(e) => {
+              if (!selectedDirectory) {
+                e.preventDefault();
+                showNotification('Please select a directory before saving the word.', 'error');
+              }
+            }}
+          >
             {isSubmitting ? 'Adding...' : 'Add Word'}
           </button>
         </div>

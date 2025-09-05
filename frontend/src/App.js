@@ -5,6 +5,7 @@ import Navigation from './Navigation';
 import HomePage from './HomePage';
 import DictionaryPage from './DictionaryPage';
 import MemorizePage from './MemorizePage';
+import SentenceExplanation from './SentenceExplanation';
 import NotificationContainer from './Notification';
 import ConfirmationModal from './ConfirmationModal';
 import './App.css';
@@ -189,6 +190,14 @@ function App() {
           <Route
             path="/memorize"
             element={<MemorizePage />}
+          />
+          <Route
+            path="/sentence-explanation"
+            element={
+              <SentenceExplanation
+                showNotification={showNotification}
+              />
+            }
           />
         </Routes>
 
