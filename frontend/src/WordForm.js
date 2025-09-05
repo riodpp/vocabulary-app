@@ -3,7 +3,6 @@ import axios from 'axios';
 
 function WordForm({ onAddWord, directories, showNotification, isEnglish }) {
   const [word, setWord] = useState('');
-  const [english, setEnglish] = useState('');
   const [translation, setTranslation] = useState('');
   const [isTranslating, setIsTranslating] = useState(false);
   const [selectedDirectory, setSelectedDirectory] = useState(() => {
@@ -101,7 +100,6 @@ function WordForm({ onAddWord, directories, showNotification, isEnglish }) {
 
   const resetForm = () => {
     setWord('');
-    setEnglish('');
     setTranslation('');
     // Keep selectedDirectory persistent
     setIsSubmitting(false);
