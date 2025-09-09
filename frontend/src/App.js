@@ -80,7 +80,7 @@ function App() {
         alert('Failed to load directories. Please check your connection.');
       }
     }
-  }, []);
+  }, [API_BASE]);
 
   const fetchWords = useCallback(async () => {
     try {
@@ -93,7 +93,7 @@ function App() {
         alert('Failed to load words. Please check your connection.');
       }
     }
-  }, []);
+  }, [API_BASE]);
 
   const addWord = async (word) => {
     await axios.post(`${API_BASE}/words`, word);
