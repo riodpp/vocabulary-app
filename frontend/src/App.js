@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import axios from 'axios';
 import Navigation from './Navigation';
@@ -46,7 +46,7 @@ function App() {
     checkConnectivity().then(isConnected => {
       if (isConnected) {
         fetchDirectories();
-        fetchWords();
+        // fetchWords(); // Remove global fetch - let individual pages handle their own data fetching
       } else {
         console.error('API not reachable. Please check your connection.');
       }
@@ -69,7 +69,7 @@ function App() {
     }
   };
 
-  const fetchDirectories = async () => {
+  const fetchDirectories = useCallback(async () => {
     try {
       const res = await axios.get(`${API_BASE}/directories`, { timeout: 10000 });
       setDirectories(res.data);
@@ -80,9 +80,9 @@ function App() {
         alert('Failed to load directories. Please check your connection.');
       }
     }
-  };
+  }, []);
 
-  const fetchWords = async () => {
+  const fetchWords = useCallback(async () => {
     try {
       const res = await axios.get(`${API_BASE}/words`, { timeout: 10000 });
       setWords(res.data);
@@ -93,7 +93,7 @@ function App() {
         alert('Failed to load words. Please check your connection.');
       }
     }
-  };
+  }, []);
 
   const addWord = async (word) => {
     await axios.post(`${API_BASE}/words`, word);

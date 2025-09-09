@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import DirectoryList from './DirectoryList';
 import './App.css';
@@ -161,9 +161,42 @@ function QuickWordForm({ onAddWord, selectedDirectoryId, showNotification }) {
 
 function DictionaryPage({ directories, words, onDeleteWord, onDeleteDirectory, onViewWords, viewedDirectory, viewedDirectoryName, viewedDirectoryWords, onRefreshWords, onAddDirectory, showNotification }) {
 
-  const refreshData = () => {
+  const [directoryWords, setDirectoryWords] = useState([]);
+
+  // Function to fetch words for a specific directory
+  const fetchWordsByDirectory = async (directoryId) => {
+    const API_BASE = process.env.REACT_APP_API_URL || 'https://vocabulary-app-backend.fly.dev';
+    try {
+      const res = await axios.get(`${API_BASE}/directories/${directoryId}/words`, { timeout: 10000 });
+      return res.data;
+    } catch (error) {
+      console.error('Error fetching words for directory:', error);
+      return [];
+    }
+  };
+
+  // Handle viewing words for a directory
+  const handleViewWords = async (directoryId) => {
+    if (directoryId) {
+      // Fetch words for this directory
+      const words = await fetchWordsByDirectory(directoryId);
+      setDirectoryWords(words);
+    } else {
+      // Clear words when closing directory view
+      setDirectoryWords([]);
+    }
+    // Call the original onViewWords function
+    onViewWords(directoryId);
+  };
+
+  const refreshData = async () => {
     if (onRefreshWords) {
       onRefreshWords();
+    }
+    // Also refresh directory words if we're viewing a directory
+    if (viewedDirectory) {
+      const words = await fetchWordsByDirectory(viewedDirectory);
+      setDirectoryWords(words);
     }
   };
   const [editingWord, setEditingWord] = useState(null);
@@ -236,7 +269,7 @@ function DictionaryPage({ directories, words, onDeleteWord, onDeleteDirectory, o
             onAddDirectory={onAddDirectory}
             onSelect={() => {}}
             selectedDirectory={null}
-            onViewWords={onViewWords}
+            onViewWords={handleViewWords}
             onDeleteDirectory={onDeleteDirectory}
           />
         </div>
@@ -264,9 +297,9 @@ function DictionaryPage({ directories, words, onDeleteWord, onDeleteDirectory, o
                 selectedDirectoryId={viewedDirectory}
                 showNotification={showNotification}
               />
-              {viewedDirectoryWords.length > 0 ? (
+              {directoryWords.length > 0 ? (
                 <ul className="word-list">
-                  {viewedDirectoryWords.map(word => (
+                  {directoryWords.map(word => (
                     <li key={word.id} className="word-item">
                       <div className="word-content">
                         <div className="english-section">

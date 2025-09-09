@@ -5,7 +5,14 @@ primary_region = "sin"
   dockerfile = "Dockerfile"
 
 [env]
+  SMTP_USERNAME = "dwiputro.rio@gmail.com"
+  SMTP_SERVER = "smtp.gmail.com"
+  SMTP_PORT = "465"
+  SMTP_FROM_EMAIL = "dwiputro.rio@gmail.com"
   PORT = "8080"
+  HOST = "0.0.0.0"
+  RUST_LOG = "info"
+  RUST_BACKTRACE = "1"
 
 [http_service]
   internal_port = 8080

@@ -135,6 +135,27 @@ async fn get_words(data: web::Data<AppState>) -> Result<web::Json<Vec<Word>>> {
     Ok(web::Json(words))
 }
 
+async fn get_words_by_directory(
+    path: web::Path<i64>,
+    data: web::Data<AppState>,
+) -> Result<web::Json<Vec<Word>>> {
+    let directory_id = path.into_inner();
+    let conn = data.conn.lock().unwrap();
+    let mut stmt = conn.prepare("SELECT id, english, indonesian, directory_id FROM words WHERE directory_id = ?").unwrap();
+    let words_iter = stmt.query_map([directory_id], |row| {
+        Ok(Word {
+            id: row.get(0)?,
+            english: row.get(1)?,
+            indonesian: row.get(2)?,
+            directory_id: row.get(3)?,
+        })
+    }).unwrap();
+
+    let words: Vec<Word> = words_iter.map(|w| w.unwrap()).collect();
+    println!("Fetched {} words from directory {}", words.len(), directory_id);
+    Ok(web::Json(words))
+}
+
 async fn create_directory(
     req: web::Json<Directory>,
     data: web::Data<AppState>,
@@ -809,6 +830,7 @@ async fn main() -> IoResult<()> {
             // Vocabulary routes (keeping existing functionality)
             .route("/words", web::post().to(create_word))
             .route("/words", web::get().to(get_words))
+            .route("/directories/{id}/words", web::get().to(get_words_by_directory))
             .route("/words/{id}", web::put().to(update_word))
             .route("/words/{id}", web::delete().to(delete_word))
             .route("/words/{id}/ai-translate", web::post().to(|path: web::Path<i64>, data: web::Data<AppState>| async move {

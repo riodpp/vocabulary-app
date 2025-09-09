@@ -277,14 +277,14 @@ impl AuthService {
         let from_email = env::var("SMTP_FROM_EMAIL").unwrap_or_else(|_| "noreply@vocabularyapp.com".to_string());
         println!("Sending from: {}", from_email);
 
-        let email = Message::builder()
+        let message = Message::builder()
             .from(from_email.parse()?)
             .to(email.parse()?)
             .subject("Verify your email - Vocabulary App")
             .body(email_body)?;
 
         println!("Connecting to SMTP server...");
-        match self.smtp_transport.send(&email) {
+        match self.smtp_transport.send(&message) {
             Ok(_) => {
                 println!("✅ Email sent successfully to: {}", email);
                 Ok(())
