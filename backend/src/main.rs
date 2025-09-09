@@ -1,9 +1,17 @@
 use rusqlite::Connection;
-use actix_web::{web, App, HttpServer, Result, middleware::Logger};
+use actix_web::{web, App, HttpServer, Result, middleware::Logger, HttpResponse};
+use actix_web::HttpRequest;
 use actix_cors::Cors;
 use serde::{Deserialize, Serialize};
 use std::io::Result as IoResult;
 use std::sync::Mutex;
+use sqlx::PgPool;
+
+mod models;
+mod auth;
+
+use crate::auth::AuthService;
+use crate::models::*;
 
 #[derive(Serialize, Deserialize)]
 struct Directory {
@@ -534,8 +542,143 @@ async fn try_google_translate(_text: &str) -> Result<String> {
     Err(actix_web::error::ErrorInternalServerError("Google Translate not implemented"))
 }
 
+// Authentication endpoints
+async fn register(
+    req: web::Json<RegisterRequest>,
+    data: web::Data<AppState>,
+) -> Result<HttpResponse> {
+    match data.auth_service.register_user(req.into_inner()).await {
+        Ok(user) => {
+            let response = ApiResponse::success(
+                "User registered successfully. Please check your email for verification code.".to_string(),
+                serde_json::json!({
+                    "user_id": user.id,
+                    "email": user.email
+                })
+            );
+            Ok(HttpResponse::Created().json(response))
+        }
+        Err(e) => {
+            let response = ApiResponse::<()>::error(e.to_string());
+            Ok(HttpResponse::BadRequest().json(response))
+        }
+    }
+}
+
+async fn verify_email(
+    req: web::Json<VerifyEmailRequest>,
+    data: web::Data<AppState>,
+) -> Result<HttpResponse> {
+    match data.auth_service.verify_email(req.into_inner()).await {
+        Ok(user) => {
+            let response = ApiResponse::success(
+                "Email verified successfully. You can now log in.".to_string(),
+                serde_json::json!({
+                    "user_id": user.id,
+                    "email": user.email,
+                    "is_verified": user.is_verified
+                })
+            );
+            Ok(HttpResponse::Ok().json(response))
+        }
+        Err(e) => {
+            let response = ApiResponse::<()>::error(e.to_string());
+            Ok(HttpResponse::BadRequest().json(response))
+        }
+    }
+}
+
+async fn login(
+    req: web::Json<LoginRequest>,
+    data: web::Data<AppState>,
+) -> Result<HttpResponse> {
+    match data.auth_service.login_user(req.into_inner()).await {
+        Ok(auth_response) => {
+            let response = ApiResponse::success(
+                "Login successful".to_string(),
+                auth_response
+            );
+            Ok(HttpResponse::Ok().json(response))
+        }
+        Err(e) => {
+            let response = ApiResponse::<()>::error(e.to_string());
+            Ok(HttpResponse::Unauthorized().json(response))
+        }
+    }
+}
+
+async fn logout(
+    req: HttpRequest,
+    data: web::Data<AppState>,
+) -> Result<HttpResponse> {
+    if let Some(auth_header) = req.headers().get("Authorization") {
+        if let Ok(auth_str) = auth_header.to_str() {
+            if auth_str.starts_with("Bearer ") {
+                let token = &auth_str[7..]; // Remove "Bearer " prefix
+                match data.auth_service.logout_user(token).await {
+                    Ok(_) => {
+                        let response = ApiResponse::<()>::success("Logged out successfully".to_string(), ());
+                        return Ok(HttpResponse::Ok().json(response));
+                    }
+                    Err(_) => {} // Continue to error response
+                }
+            }
+        }
+    }
+
+    let response = ApiResponse::<()>::error("Invalid token".to_string());
+    Ok(HttpResponse::BadRequest().json(response))
+}
+
+async fn get_profile(
+    req: HttpRequest,
+    data: web::Data<AppState>,
+) -> Result<HttpResponse> {
+    if let Some(auth_header) = req.headers().get("Authorization") {
+        if let Ok(auth_str) = auth_header.to_str() {
+            if auth_str.starts_with("Bearer ") {
+                let token = &auth_str[7..]; // Remove "Bearer " prefix
+                match data.auth_service.validate_token(token).await {
+                    Ok(user) => {
+                        // Get user's subscription
+                        let subscription = sqlx::query_as::<_, Subscription>(
+                            "SELECT * FROM subscriptions WHERE user_id = $1 AND status = 'active' ORDER BY created_at DESC LIMIT 1"
+                        )
+                        .bind(user.id)
+                        .fetch_optional(&data.pg_pool)
+                        .await
+                        .unwrap_or(None);
+
+                        let user_response = UserResponse {
+                            id: user.id,
+                            email: user.email.clone(),
+                            first_name: user.first_name.clone(),
+                            last_name: user.last_name.clone(),
+                            is_verified: user.is_verified,
+                            subscription: subscription.map(|s| SubscriptionResponse {
+                                plan_type: s.plan_type,
+                                status: s.status,
+                                current_period_end: s.current_period_end,
+                            }),
+                        };
+
+                        let response = ApiResponse::success("Profile retrieved successfully".to_string(), user_response);
+                        return Ok(HttpResponse::Ok().json(response));
+                    }
+                    Err(_) => {} // Continue to error response
+                }
+            }
+        }
+    }
+
+    let response = ApiResponse::<()>::error("Invalid or missing token".to_string());
+    Ok(HttpResponse::Unauthorized().json(response))
+}
+
 struct AppState {
-    conn: Mutex<Connection>,
+    conn: Mutex<Connection>, // SQLite for existing vocabulary data
+    pg_pool: PgPool,         // PostgreSQL for user accounts
+    auth_service: AuthService,
 }
 
 #[actix_web::main]
@@ -546,11 +689,29 @@ async fn main() -> IoResult<()> {
     dotenv::dotenv().ok();
     println!("Environment variables loaded");
 
-    // Create database connection - use persistent volume on Fly.io or local data directory
-    let db_path = std::env::var("DATABASE_PATH").unwrap_or_else(|_| "data/vocabulary.db".to_string());
-    let conn = Connection::open(&db_path).expect("Failed to open database");
+    // Set up PostgreSQL connection
+    let database_url = std::env::var("DATABASE_URL")
+        .unwrap_or_else(|_| "postgresql://postgres:password@localhost/vocabulary_app".to_string());
 
-    // Create tables
+    println!("Connecting to PostgreSQL...");
+    let pg_pool = PgPool::connect(&database_url)
+        .await
+        .expect("Failed to connect to PostgreSQL");
+
+    // Run migrations
+    println!("Running database migrations...");
+    sqlx::migrate!("./migrations")
+        .run(&pg_pool)
+        .await
+        .expect("Failed to run migrations");
+
+    println!("PostgreSQL initialized successfully");
+
+    // Create SQLite connection for existing vocabulary data
+    let db_path = std::env::var("DATABASE_PATH").unwrap_or_else(|_| "data/vocabulary.db".to_string());
+    let conn = Connection::open(&db_path).expect("Failed to open SQLite database");
+
+    // Create tables (keeping existing SQLite structure for now)
     conn.execute(
         "CREATE TABLE IF NOT EXISTS directories (
             id INTEGER PRIMARY KEY,
@@ -597,9 +758,17 @@ async fn main() -> IoResult<()> {
         [],
     ).expect("Failed to create progress table");
 
-    println!("Database initialized successfully at: {}", db_path);
+    println!("SQLite database initialized successfully at: {}", db_path);
 
-    let app_state = web::Data::new(AppState { conn: Mutex::new(conn) });
+    // Initialize auth service
+    let auth_service = AuthService::new(pg_pool.clone())
+        .expect("Failed to initialize auth service");
+
+    let app_state = web::Data::new(AppState {
+        conn: Mutex::new(conn),
+        pg_pool,
+        auth_service,
+    });
 
     println!("Starting HTTP server on 0.0.0.0:8080");
 
@@ -631,6 +800,13 @@ async fn main() -> IoResult<()> {
                     Err(e) => web::Json(serde_json::json!({ "status": "ERROR", "error": e.to_string() }))
                 }
             }))
+            // Authentication routes
+            .route("/auth/register", web::post().to(register))
+            .route("/auth/verify-email", web::post().to(verify_email))
+            .route("/auth/login", web::post().to(login))
+            .route("/auth/logout", web::post().to(logout))
+            .route("/auth/profile", web::get().to(get_profile))
+            // Vocabulary routes (keeping existing functionality)
             .route("/words", web::post().to(create_word))
             .route("/words", web::get().to(get_words))
             .route("/words/{id}", web::put().to(update_word))
