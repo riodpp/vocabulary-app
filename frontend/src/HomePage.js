@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import WordForm from './WordForm';
 
-function HomePage({ onAddWord, directories, showNotification }) {
+function HomePage({ showNotification }) {
   const [isEnglish, setIsEnglish] = useState(true);
   const [isFlipping, setIsFlipping] = useState(false);
 
@@ -28,8 +28,6 @@ function HomePage({ onAddWord, directories, showNotification }) {
       <div className="centered-content">
         <div className={`word-form-container ${isFlipping ? 'flipping' : ''}`}>
           <WordForm
-            onAddWord={onAddWord}
-            directories={directories}
             showNotification={showNotification}
             isEnglish={isEnglish}
           />

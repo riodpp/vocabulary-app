@@ -18,8 +18,8 @@ function DirectoryList({ directories, onAddDirectory, onSelect, selectedDirector
         </form>
       </div>
       <ul>
-        {directories.map(d => (
-          <li key={d.id} className={d.id === selectedDirectory ? 'selected' : ''}>
+        {directories.filter(d => d && d.id).map((d, index) => (
+          <li key={d.id || `dir-${index}`} className={d.id === selectedDirectory ? 'selected' : ''}>
             <span onClick={() => onViewWords(d.id)} className="directory-name">{d.name}</span>
             <button
               className="delete-dir-btn"

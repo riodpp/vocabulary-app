@@ -1,7 +1,8 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import axios from 'axios';
+import { saveWord, getAllDirectories } from './indexedDB';
 
-function WordForm({ onAddWord, directories, showNotification, isEnglish }) {
+function WordForm({ showNotification, isEnglish }) {
   const [word, setWord] = useState('');
   const [translation, setTranslation] = useState('');
   const [isTranslating, setIsTranslating] = useState(false);
@@ -10,8 +11,27 @@ function WordForm({ onAddWord, directories, showNotification, isEnglish }) {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState('');
+  const [directories, setDirectories] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const API_BASE = process.env.REACT_APP_API_URL || 'https://vocabulary-app-backend.fly.dev';
+
+  // Load directories from local storage
+  useEffect(() => {
+    const loadDirectories = async () => {
+      try {
+        const localDirectories = await getAllDirectories();
+        setDirectories(localDirectories);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error loading directories:', error);
+        setDirectories([]); // Ensure directories is always an array
+        setLoading(false);
+      }
+    };
+
+    loadDirectories();
+  }, []);
 
   // Validation function - only allow letters, spaces, hyphens, and apostrophes
   const validateWord = (word) => {
@@ -36,7 +56,7 @@ function WordForm({ onAddWord, directories, showNotification, isEnglish }) {
     setIsTranslating(true);
     try {
       const response = await axios.post(`${API_BASE}/ai-translate`, { text, from, to });
-      setTranslation(response.data.translation || '');
+      setTranslation(response.data.data?.translation || '');
     } catch (error) {
       console.error('Error fetching translation:', error);
       setTranslation('');
@@ -70,18 +90,26 @@ function WordForm({ onAddWord, directories, showNotification, isEnglish }) {
 
       if (!isEnglish) {
         // Translate Indonesian to English
-        await fetchTranslation(word, 'id', 'en');
-        englishWord = translation.toLowerCase(); // Assuming translation is now English
+        const response = await axios.post(`${API_BASE}/ai-translate`, { text: word, from: 'id', to: 'en' });
+        const translatedText = response.data.data?.translation || '';
+        englishWord = translatedText.toLowerCase(); // Use the direct response
         indonesianWord = word; // Original Indonesian
       } else {
         englishWord = word.toLowerCase();
       }
 
-      await onAddWord({
+      // Save word directly to local storage
+      const wordData = {
         english: englishWord,
         indonesian: indonesianWord,
-        directory_id: selectedDirectory ? parseInt(selectedDirectory) : null
-      });
+        directory_id: selectedDirectory ? parseInt(selectedDirectory) : null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      const savedWord = await saveWord(wordData);
+      console.log('✅ Word saved to local storage:', savedWord);
+
       showNotification('Word added successfully!', 'success');
       resetForm();
     } catch (error) {
@@ -105,6 +133,25 @@ function WordForm({ onAddWord, directories, showNotification, isEnglish }) {
     setIsSubmitting(false);
     setValidationError('');
   };
+
+  if (loading) {
+    return (
+      <div className="word-form">
+        <div style={{ textAlign: 'center', padding: '20px' }}>
+          <div style={{
+            border: '4px solid #f3f3f3',
+            borderTop: '4px solid #667eea',
+            borderRadius: '50%',
+            width: '30px',
+            height: '30px',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 10px'
+          }}></div>
+          <p>Loading directories...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="word-form">

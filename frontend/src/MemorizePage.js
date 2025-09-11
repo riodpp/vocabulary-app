@@ -1,8 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
 import Flashcard from './Flashcard';
 import DirectorySelectionModal from './DirectorySelectionModal';
 import HistoryTable from './HistoryTable';
+import {
+  getAllWords,
+  getWordsByDirectory,
+  getAllDirectories,
+  saveProgress as saveProgressLocal,
+  initializeDefaultData,
+  isIndexedDBSupported
+} from './indexedDB';
 import './MemorizePage.css'; // Assuming we create this CSS file
 
 function MemorizePage() {
@@ -16,40 +23,78 @@ function MemorizePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const API_BASE = process.env.REACT_APP_API_URL || 'https://vocabulary-app-backend.fly.dev';
+  // API_BASE removed - working offline-only
 
   const fetchDirectories = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_BASE}/directories`, { timeout: 10000 });
-      setDirectories(res.data);
+      if (isIndexedDBSupported()) {
+        const localDirectories = await getAllDirectories();
+        setDirectories(localDirectories);
+        console.log(`📁 Loaded ${localDirectories.length} directories from local storage`);
+      } else {
+        console.error('❌ IndexedDB not supported');
+      }
     } catch (error) {
-      console.error('Error fetching directories:', error);
+      console.error('❌ Error loading directories from local storage:', error);
     }
-  }, [API_BASE]);
+  }, []);
 
   const fetchWords = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_BASE}/words`, { timeout: 10000 });
-      setWords(res.data);
-      setLoading(false);
+      if (isIndexedDBSupported()) {
+        const localWords = await getAllWords();
+        setWords(localWords);
+        setLoading(false);
+        console.log(`📚 Loaded ${localWords.length} words from local storage`);
+      } else {
+        console.error('❌ IndexedDB not supported');
+        setLoading(false);
+      }
     } catch (error) {
-      console.error('Error fetching words:', error);
+      console.error('❌ Error loading words from local storage:', error);
       setLoading(false);
     }
-  }, [API_BASE]);
+  }, []);
 
   useEffect(() => {
-    fetchDirectories();
-    fetchWords();
+    const initializeApp = async () => {
+      if (isIndexedDBSupported()) {
+        await initializeDefaultData();
+      }
+      await fetchDirectories();
+      await fetchWords();
+    };
+
+    initializeApp();
   }, [fetchDirectories, fetchWords]);
 
   const showDirectorySelection = () => {
     setDirectorySelectionModal(true);
   };
 
-  const startFlashcard = (directoryId) => {
-    const filteredWords = directoryId ? words.filter(w => w.directory_id === directoryId) : words;
-    setSelectedDirectory(directoryId); // Set the selected directory
+  const startFlashcard = async (directoryId) => {
+    let filteredWords = [];
+
+    if (directoryId) {
+      // Try to get words from local storage first
+      if (isIndexedDBSupported()) {
+        try {
+          filteredWords = await getWordsByDirectory(directoryId);
+        } catch (error) {
+          console.error('Error loading words from local storage:', error);
+        }
+      }
+
+      // If no local words or IndexedDB not supported, filter from current words
+      if (filteredWords.length === 0) {
+        filteredWords = words.filter(w => w.directory_id === directoryId);
+      }
+    } else {
+      // For all words, use current words state (which may be from local storage)
+      filteredWords = words;
+    }
+
+    setSelectedDirectory(directoryId);
     setFlashcardWords(filteredWords);
     setScore({ correct: 0, wrong: 0 });
     setSessionStarted(true);
@@ -78,25 +123,30 @@ function MemorizePage() {
 
     setSaving(true);
     try {
-      // Transform results to match backend expected format (wordId -> word_id)
+      // Transform results for local storage
       const transformedResults = results.map(result => ({
         word_id: result.wordId,
         correct: result.correct
       }));
 
-      await axios.post(`${API_BASE}/progress`, {
-        directory_id: selectedDirectory,
-        total_words: flashcardWords.length,
-        results: transformedResults
-      });
-      console.log('Progress saved successfully');
+      // Save to local storage only
+      if (isIndexedDBSupported()) {
+        await saveProgressLocal({
+          directory_id: selectedDirectory,
+          total_words: flashcardWords.length,
+          results: transformedResults
+        });
+        console.log('✅ Progress saved to local storage successfully');
+      } else {
+        console.error('❌ IndexedDB not supported - progress not saved');
+      }
 
       // Refresh history table after saving
       if (window.refreshHistoryTable) {
         window.refreshHistoryTable();
       }
     } catch (error) {
-      console.error('Error saving progress:', error);
+      console.error('❌ Error saving progress to local storage:', error);
     } finally {
       setSaving(false);
     }
