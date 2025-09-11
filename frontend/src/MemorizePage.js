@@ -7,6 +7,7 @@ import {
   getWordsByDirectory,
   getAllDirectories,
   saveProgress as saveProgressLocal,
+  updateWordProgress,
   initializeDefaultData,
   isIndexedDBSupported
 } from './indexedDB';
@@ -28,9 +29,18 @@ function MemorizePage() {
   const fetchDirectories = useCallback(async () => {
     try {
       if (isIndexedDBSupported()) {
-        const localDirectories = await getAllDirectories();
-        setDirectories(localDirectories);
-        console.log(`📁 Loaded ${localDirectories.length} directories from local storage`);
+        const [localDirectories, localWords] = await Promise.all([
+          getAllDirectories(),
+          getAllWords()
+        ]);
+
+        // Filter directories to only include those that have words
+        const directoriesWithWords = localDirectories.filter(directory => {
+          return localWords.some(word => word.directory_id === directory.id);
+        });
+
+        setDirectories(directoriesWithWords);
+        console.log(`📁 Loaded ${directoriesWithWords.length} directories with words from local storage (${localDirectories.length} total directories)`);
       } else {
         console.error('❌ IndexedDB not supported');
       }
@@ -68,6 +78,14 @@ function MemorizePage() {
     initializeApp();
   }, [fetchDirectories, fetchWords]);
 
+  // Expose refresh functions globally for cross-component updates
+  useEffect(() => {
+    window.refreshDirectories = fetchDirectories;
+    return () => {
+      delete window.refreshDirectories;
+    };
+  }, [fetchDirectories]);
+
   const showDirectorySelection = () => {
     setDirectorySelectionModal(true);
   };
@@ -92,6 +110,12 @@ function MemorizePage() {
     } else {
       // For all words, use current words state (which may be from local storage)
       filteredWords = words;
+    }
+
+    // Only start session if there are words to practice
+    if (filteredWords.length === 0) {
+      alert('No words available for practice in this directory.');
+      return;
     }
 
     setSelectedDirectory(directoryId);
@@ -129,14 +153,24 @@ function MemorizePage() {
         correct: result.correct
       }));
 
-      // Save to local storage only
+      // Save session progress to local storage
       if (isIndexedDBSupported()) {
         await saveProgressLocal({
           directory_id: selectedDirectory,
           total_words: flashcardWords.length,
           results: transformedResults
         });
-        console.log('✅ Progress saved to local storage successfully');
+        console.log('✅ Session progress saved to local storage successfully');
+
+        // Update individual word progress
+        for (const result of results) {
+          try {
+            await updateWordProgress(result.wordId, result.correct);
+          } catch (wordError) {
+            console.error(`❌ Error updating progress for word ${result.wordId}:`, wordError);
+          }
+        }
+        console.log('✅ Individual word progress updated successfully');
       } else {
         console.error('❌ IndexedDB not supported - progress not saved');
       }

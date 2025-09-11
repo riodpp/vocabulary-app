@@ -474,19 +474,57 @@
   background: white;
   border-radius: 4px;
   border-left: 3px solid #4CAF50;
+  text-align: left;
+}
+
+.quick-word-form .translation-preview .translation-label,
+.quick-word-form .translation-preview .translation-text {
+  text-align: left;
+}
+
+.word-form .translation-preview {
+  margin-top: 8px;
+  padding: 8px;
+  background: white;
+  border-radius: 4px;
+  border-left: 3px solid #4CAF50;
+  text-align: left;
+}
+
+.word-form .translation-preview .translation-label,
+.word-form .translation-preview .translation-text {
+  text-align: left;
+}
+
+.word-form .translation-label {
+  font-weight: bold;
+  color: #333;
+  font-size: 14px;
+  margin-bottom: 0;
+  margin-right: 8px;
+  display: inline;
+}
+
+.word-form .translation-text {
+  color: #555;
+  font-style: italic;
+  display: inline;
 }
 
 .quick-word-form .translation-label {
   font-weight: bold;
   color: #333;
   font-size: 12px;
-  margin-bottom: 3px;
+  margin-bottom: 0;
+  margin-right: 6px;
+  display: inline;
 }
 
 .quick-word-form .translation-text {
   color: #555;
   font-style: italic;
   font-size: 13px;
+  display: inline;
 }
 
 .dictionary-page {
@@ -1266,18 +1304,27 @@
   background-color: #f0f8ff;
   border-radius: 6px;
   border-left: 4px solid #4CAF50;
+  text-align: left;
+}
+
+.translation-preview .translation-label,
+.translation-preview .translation-text {
+  text-align: left;
 }
 
 .translation-label {
   font-weight: bold;
   color: #333;
   font-size: 14px;
-  margin-bottom: 5px;
+  margin-bottom: 0;
+  margin-right: 8px;
+  display: inline;
 }
 
 .translation-text {
   color: #555;
   font-style: italic;
+  display: inline;
 }
 
 .form-buttons {
@@ -1701,6 +1748,53 @@
   background-color: #5a6268;
 }
 
+/* Results Section */
+.results-section {
+  margin-top: 20px;
+}
+
+/* Translation Section */
+.translation-section {
+  background-color: #f0f8ff;
+  padding: 15px;
+  border-radius: 6px;
+  border-left: 4px solid #2196F3;
+  margin-bottom: 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.translation-section h3 {
+  color: #333;
+  margin: 0 0 10px 0;
+  font-size: 1.2em;
+  text-align: center;
+  align-self: center;
+}
+
+.translation-text {
+  color: #555;
+  line-height: 1.6;
+  font-size: 1em;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.translation-text p {
+  margin: 0;
+  font-weight: bold;
+  font-size: 1.1em;
+  text-align: center;
+  display: block;
+  width: auto;
+  max-width: 100%;
+}
+
+/* Explanation Section */
 .explanation-section {
   background-color: #f0f8ff;
   padding: 15px;
@@ -1708,16 +1802,201 @@
   border-left: 4px solid #4CAF50;
 }
 
-.explanation-section h3 {
+.explanation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.explanation-header h3 {
   color: #333;
-  margin: 0 0 10px 0;
+  margin: 0;
   font-size: 1.2em;
+}
+
+.collapse-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  color: #666;
+  padding: 5px;
+  border-radius: 3px;
+  transition: background-color 0.3s;
+}
+
+.collapse-toggle:hover {
+  background-color: #e0e0e0;
 }
 
 .explanation-text {
   color: #555;
   line-height: 1.6;
   font-size: 1em;
+  text-align: left;
+}
+
+.explanation-text p,
+.explanation-text ul,
+.explanation-text ol,
+.explanation-text li {
+  text-align: left;
+  margin: 0 0 10px 0;
+}
+
+.explanation-text ul,
+.explanation-text ol {
+  padding-left: 20px;
+}
+
+.explanation-text li {
+  margin-bottom: 5px;
+}
+
+/* Vocabulary Section */
+.vocabulary-section {
+  background-color: #f9f9f9;
+  padding: 15px;
+  border-radius: 6px;
+  border-left: 4px solid #9C27B0;
+  margin-top: 15px;
+}
+
+.vocabulary-section h3 {
+  color: #333;
+  margin: 0 0 10px 0;
+  font-size: 1.2em;
+}
+
+.vocabulary-section p {
+  color: #666;
+  margin: 0 0 15px 0;
+  font-size: 0.9em;
+}
+
+.vocabulary-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.vocabulary-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+
+.vocabulary-item:hover {
+  border-color: #4CAF50;
+}
+
+.vocabulary-item input[type="checkbox"] {
+  margin: 0;
+}
+
+.vocabulary-item span {
+  font-weight: 500;
+  color: #333;
+}
+
+.word-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.english-word.included {
+  font-weight: bold;
+  color: #4CAF50;
+}
+
+.indonesian-translation {
+  font-size: 0.9em;
+  color: #666;
+  font-style: italic;
+  margin-top: 2px;
+}
+
+.translating-notice {
+  color: #666;
+  font-style: italic;
+  text-align: center;
+  margin: 10px 0;
+}
+
+.vocabulary-controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+  justify-content: center;
+}
+
+.select-all-btn, .deselect-all-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.3s;
+}
+
+.select-all-btn {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.select-all-btn:hover:not(:disabled) {
+  background-color: #45a049;
+}
+
+.deselect-all-btn {
+  background-color: #f44336;
+  color: white;
+}
+
+.deselect-all-btn:hover:not(:disabled) {
+  background-color: #d32f2f;
+}
+
+.select-all-btn:disabled, .deselect-all-btn:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+  color: #666;
+}
+
+.vocabulary-actions {
+  display: flex;
+  justify-content: center;
+}
+
+.save-vocab-btn {
+  padding: 10px 20px;
+  background-color: #9C27B0;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.3s;
+}
+
+.save-vocab-btn:hover:not(:disabled) {
+  background-color: #7B1FA2;
+}
+
+.save-vocab-btn:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
 }
 
 /* Language Toggle Container */
