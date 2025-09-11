@@ -37,6 +37,17 @@ struct ExplainSentenceResponse {
     explanation: String,
 }
 
+// Vocabulary extraction structs
+#[derive(Deserialize)]
+struct ExtractVocabularyRequest {
+    sentence: String,
+}
+
+#[derive(Serialize)]
+struct ExtractVocabularyResponse {
+    vocabulary: Vec<String>,
+}
+
 // Translation function using OpenRouter API
 async fn translate_text(text: &str, from: Option<String>, to: Option<String>) -> Result<String> {
     println!("Starting translation for: {} (from: {:?}, to: {:?})", text, from, to);
@@ -215,6 +226,96 @@ async fn explain_sentence(sentence: &str) -> Result<String> {
     Ok(explanation)
 }
 
+// Vocabulary extraction function using OpenRouter API
+async fn extract_vocabulary(sentence: &str) -> Result<Vec<String>> {
+    println!("Starting vocabulary extraction for: {}", sentence);
+
+    let openrouter_api_key = match std::env::var("OPENROUTER_API_KEY") {
+        Ok(key) => {
+            println!("OpenRouter API key found (length: {})", key.len());
+            key
+        }
+        Err(_) => {
+            println!("OpenRouter API key not found in environment");
+            return Err(actix_web::error::ErrorInternalServerError("OpenRouter API key not configured"));
+        }
+    };
+
+    let client = Client::new();
+
+    let request_body = serde_json::json!({
+        "model": "openrouter/sonoma-dusk-alpha",
+        "messages": [
+            {
+                "role": "system",
+                "content": "You are a language learning assistant. Extract the most important vocabulary words from an English sentence that would be valuable for Indonesian learners to learn. Focus on:\n- Key nouns, verbs, adjectives, and adverbs\n- Words that are central to understanding the sentence\n- Words that might be challenging for language learners\n- Avoid very common words like 'the', 'a', 'is', 'are', 'and', 'or', 'but'\n\nReturn only a JSON array of strings containing the vocabulary words, nothing else. Example: [\"important\", \"vocabulary\", \"words\"]"
+            },
+            {
+                "role": "user",
+                "content": format!("Extract key vocabulary words from this English sentence: \"{}\"", sentence)
+            }
+        ],
+        "max_tokens": 200,
+        "temperature": 0.3
+    });
+
+    println!("Sending vocabulary extraction request to OpenRouter API...");
+    let response = client
+        .post("https://openrouter.ai/api/v1/chat/completions")
+        .header("Authorization", format!("Bearer {}", openrouter_api_key))
+        .header("Content-Type", "application/json")
+        .json(&request_body)
+        .send()
+        .await
+        .map_err(|e| {
+            println!("OpenRouter API request failed: {:?}", e);
+            actix_web::error::ErrorInternalServerError("Vocabulary extraction service temporarily unavailable")
+        })?;
+
+    println!("OpenRouter API response status: {}", response.status());
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        println!("OpenRouter API error ({}): {}", status, error_text);
+        return Err(actix_web::error::ErrorInternalServerError("Vocabulary extraction service error"));
+    }
+
+    let response_text = response.text().await
+        .map_err(|e| {
+            println!("Failed to read response text: {:?}", e);
+            actix_web::error::ErrorInternalServerError("Vocabulary extraction service error")
+        })?;
+
+    println!("Raw response: {}", response_text);
+
+    let response_json: serde_json::Value = serde_json::from_str(&response_text)
+        .map_err(|e| {
+            println!("Failed to parse JSON response: {:?}, Raw: {}", e, response_text);
+            actix_web::error::ErrorInternalServerError("Vocabulary extraction service error")
+        })?;
+
+    println!("Parsed JSON response successfully");
+
+    let vocabulary_text = response_json["choices"][0]["message"]["content"]
+        .as_str()
+        .unwrap_or("[]")
+        .trim()
+        .to_string();
+
+    println!("Vocabulary response: {}", vocabulary_text);
+
+    // Parse the JSON array
+    let vocabulary: Vec<String> = serde_json::from_str(&vocabulary_text)
+        .unwrap_or_else(|_| {
+            println!("Failed to parse vocabulary JSON, returning empty array");
+            Vec::new()
+        });
+
+    println!("Extracted vocabulary: {:?}", vocabulary);
+    Ok(vocabulary)
+}
+
 // Sentence explanation endpoint handler
 async fn explain_sentence_handler(
     req: web::Json<ExplainSentenceRequest>,
@@ -242,6 +343,29 @@ async fn explain_sentence_handler(
         (_, Err(e)) => {
             println!("Explanation failed: {:?}", e);
             let response = ApiResponse::<()>::error("Explanation service temporarily unavailable".to_string());
+            Ok(HttpResponse::InternalServerError().json(response))
+        }
+    }
+}
+
+// Vocabulary extraction endpoint handler
+async fn extract_vocabulary_handler(
+    req: web::Json<ExtractVocabularyRequest>,
+) -> Result<HttpResponse> {
+    println!("Received vocabulary extraction request for: {}", req.sentence);
+
+    match extract_vocabulary(&req.sentence).await {
+        Ok(vocabulary) => {
+            println!("Vocabulary extraction successful: {} words found", vocabulary.len());
+            let response = ApiResponse::success(
+                "Vocabulary extracted successfully".to_string(),
+                ExtractVocabularyResponse { vocabulary }
+            );
+            Ok(HttpResponse::Ok().json(response))
+        }
+        Err(e) => {
+            println!("Vocabulary extraction failed: {:?}", e);
+            let response = ApiResponse::<()>::error("Vocabulary extraction service temporarily unavailable".to_string());
             Ok(HttpResponse::InternalServerError().json(response))
         }
     }
@@ -470,6 +594,8 @@ async fn main() -> IoResult<()> {
             .route("/ai-translate", web::post().to(ai_translate))
             // Sentence explanation endpoint
             .route("/explain-sentence", web::post().to(explain_sentence_handler))
+            // Vocabulary extraction endpoint
+            .route("/extract-vocabulary", web::post().to(extract_vocabulary_handler))
             // db-check route removed - SQLite no longer used
             // Authentication routes only - vocabulary data handled locally
             .route("/auth/register", web::post().to(register))

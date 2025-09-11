@@ -32,8 +32,43 @@ function SentenceExplanation({ showNotification }) {
     'what', 'when', 'where', 'why', 'how', 'who', 'which'
   ]);
 
-  // Extract vocabulary from sentence
+  // Extract vocabulary from sentence using AI
   const extractVocabulary = async (text) => {
+    try {
+      const response = await axios.post(`${API_BASE}/extract-vocabulary`, { sentence: text });
+
+      if (response.data && response.data.data && response.data.data.vocabulary) {
+        let vocabulary = response.data.data.vocabulary;
+
+        // Filter out words that are already saved in any directory
+        try {
+          const allSavedWords = await getAllWords();
+          const savedWordSet = new Set(
+            allSavedWords
+              .filter(word => word && word.english) // Filter out null/undefined words
+              .map(word => word.english.toLowerCase())
+          );
+          vocabulary = vocabulary.filter(word => !savedWordSet.has(word.toLowerCase()));
+        } catch (error) {
+          console.error('Error checking saved words:', error);
+          // Continue with AI-extracted vocabulary even if saved words check fails
+        }
+
+        return vocabulary;
+      } else {
+        console.error('Invalid response format from vocabulary extraction API');
+        return [];
+      }
+    } catch (error) {
+      console.error('Error extracting vocabulary with AI:', error);
+      // Fallback to manual extraction if AI fails
+      console.log('Falling back to manual vocabulary extraction...');
+      return extractVocabularyManual(text);
+    }
+  };
+
+  // Manual vocabulary extraction as fallback
+  const extractVocabularyManual = (text) => {
     const words = text.toLowerCase()
       .replace(/[^\w\s]/g, '') // Remove punctuation
       .split(/\s+/) // Split by whitespace
@@ -41,19 +76,7 @@ function SentenceExplanation({ showNotification }) {
       .filter(word => !commonWords.has(word)) // Filter out common words
       .filter((word, index, arr) => arr.indexOf(word) === index); // Remove duplicates
 
-    // Filter out words that are already saved in any directory
-    try {
-      const allSavedWords = await getAllWords();
-      const savedWordSet = new Set(
-        allSavedWords
-          .filter(word => word && word.english) // Filter out null/undefined words
-          .map(word => word.english.toLowerCase())
-      );
-      return words.filter(word => !savedWordSet.has(word));
-    } catch (error) {
-      console.error('Error checking saved words:', error);
-      return words; // Return original words if there's an error
-    }
+    return words;
   };
 
   // Translate individual words
