@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import DirectoryList from './DirectoryList';
-import { getAllDirectories, saveDirectory, deleteDirectory, getWordsByDirectory, saveWord, updateWord, deleteWord } from './indexedDB';
+import { getAllDirectories, saveDirectory, deleteDirectory, getWordsByDirectory, saveWord, updateWord, deleteWord, getAllWords } from './indexedDB';
 import './App.css';
 
 function QuickWordForm({ onAddWord, selectedDirectoryId, showNotification }) {
@@ -50,14 +50,15 @@ function QuickWordForm({ onAddWord, selectedDirectoryId, showNotification }) {
       setTranslation(translatedText);
 
       if (translatedText && translatedText.trim()) {
-        showNotification(`Translation: ${translatedText}`, 'success');
+        // Don't show notification, just update the translation state
+        // The translation will be displayed below the input field
       } else {
         showNotification('Translation received but empty. Please enter manually.', 'warning');
       }
     } catch (error) {
       console.error('Error fetching translation:', error);
       setTranslation('');
-      showNotification('Translation service unavailable. Please enter translation manually.', 'warning');
+      showNotification('Translation service unavailable. Please enter manually.', 'warning');
     } finally {
       setIsTranslating(false);
     }
@@ -163,6 +164,12 @@ function QuickWordForm({ onAddWord, selectedDirectoryId, showNotification }) {
         {validationError && (
           <div className="validation-error">
             {validationError}
+          </div>
+        )}
+        {translation && (
+          <div className="translation-preview">
+            <span className="translation-label">Translation:</span>
+            <span className="translation-text">{isTranslating ? 'Translating...' : translation}</span>
           </div>
         )}
         <div className="form-actions">
@@ -274,12 +281,23 @@ function DictionaryPage({ directories, words, onDeleteWord, onDeleteDirectory, o
 
   const updateWordTranslation = async (wordId, newTranslation) => {
     try {
-      const wordData = {
-        id: wordId,
+      // First, get the existing word data
+      const allWords = await getAllWords();
+      const existingWord = allWords.find(word => word.id === wordId);
+
+      if (!existingWord) {
+        showNotification('Word not found.', 'error');
+        return;
+      }
+
+      // Update only the translation field while preserving other data
+      const updatedWordData = {
+        ...existingWord,
         indonesian: newTranslation,
         updated_at: new Date().toISOString()
       };
-      await updateWord(wordData);
+
+      await updateWord(updatedWordData);
       // Refresh the data to reflect changes
       refreshData();
     } catch (error) {
