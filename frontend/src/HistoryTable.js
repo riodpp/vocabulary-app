@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
+import { getAllProgress, getAllDirectories, isIndexedDBSupported } from './indexedDB';
 import './HistoryTable.css';
 
 function HistoryTable() {
@@ -8,24 +8,78 @@ function HistoryTable() {
   const [loading, setLoading] = useState(true);
   const [expandedRows, setExpandedRows] = useState(new Set());
   const [collapsed, setCollapsed] = useState(true);
-
-  const API_BASE = process.env.REACT_APP_API_URL || 'https://vocabulary-app-backend.fly.dev';
+  const [totalRecords, setTotalRecords] = useState(0);
 
   const fetchSessions = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_BASE}/sessions?page=${currentPage}`);
-      setSessions(response.data);
+
+      if (!isIndexedDBSupported()) {
+        console.error('IndexedDB not supported');
+        setSessions([]);
+        return;
+      }
+
+      // Load progress records and directories from local storage
+      const [progressRecords, directories] = await Promise.all([
+        getAllProgress(),
+        getAllDirectories()
+      ]);
+
+      // Create directory name lookup map
+      const directoryMap = {};
+      directories.forEach(dir => {
+        directoryMap[dir.id] = dir.name;
+      });
+
+      // Transform progress records to session format
+      const allSessions = progressRecords
+        .map(record => {
+          // Calculate correct and wrong counts
+          const correct = record.results.filter(r => r.correct).length;
+          const wrong = record.results.filter(r => !r.correct).length;
+          const scorePercentage = record.total_words > 0 ? (correct / record.total_words) * 100 : 0;
+
+          return {
+            id: record.id,
+            directory_name: directoryMap[record.directory_id] || 'All Words',
+            total_words: record.total_words,
+            correct: correct,
+            wrong: wrong,
+            score_percentage: scorePercentage,
+            created_at: record.timestamp
+          };
+        })
+        // Sort by timestamp descending (newest first)
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+      // Set total records for pagination
+      setTotalRecords(allSessions.length);
+
+      // Simple pagination (15 items per page)
+      const transformedSessions = allSessions.slice((currentPage - 1) * 15, currentPage * 15);
+
+      setSessions(transformedSessions);
+      console.log(`📊 Loaded ${transformedSessions.length} history sessions from local storage (${allSessions.length} total)`);
     } catch (error) {
-      console.error('Error fetching sessions:', error);
+      console.error('Error fetching sessions from local storage:', error);
+      setSessions([]);
     } finally {
       setLoading(false);
     }
-  }, [API_BASE, currentPage]);
+  }, [currentPage]);
 
   useEffect(() => {
     fetchSessions();
   }, [currentPage, fetchSessions]);
+
+  // Reset to page 1 if current page exceeds available pages
+  useEffect(() => {
+    const maxPage = Math.ceil(totalRecords / 15);
+    if (currentPage > maxPage && maxPage > 0) {
+      setCurrentPage(1);
+    }
+  }, [totalRecords, currentPage]);
 
   // Expose refresh function to parent component
   useEffect(() => {
@@ -55,7 +109,10 @@ function HistoryTable() {
   };
 
   const nextPage = () => {
-    setCurrentPage(prev => prev + 1);
+    const maxPage = Math.ceil(totalRecords / 15);
+    if (currentPage < maxPage) {
+      setCurrentPage(prev => prev + 1);
+    }
   };
 
   const prevPage = () => {
@@ -167,10 +224,12 @@ function HistoryTable() {
                 >
                   Previous
                 </button>
-                <span className="page-info">Page {currentPage}</span>
+                <span className="page-info">
+                  Page {currentPage} of {Math.max(1, Math.ceil(totalRecords / 15))}
+                </span>
                 <button
                   onClick={nextPage}
-                  disabled={sessions.length < 15}
+                  disabled={currentPage >= Math.ceil(totalRecords / 15)}
                   className="pagination-btn"
                 >
                   Next

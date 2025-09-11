@@ -300,6 +300,10 @@ function DictionaryPage({ directories, words, onDeleteWord, onDeleteDirectory, o
       await updateWord(updatedWordData);
       // Refresh the data to reflect changes
       refreshData();
+      // Refresh directories in MemorizePage if it exists
+      if (window.refreshDirectories) {
+        window.refreshDirectories();
+      }
     } catch (error) {
       console.error('Error updating translation:', error);
       showNotification('Failed to update translation.', 'error');
@@ -392,6 +396,10 @@ function DictionaryPage({ directories, words, onDeleteWord, onDeleteDirectory, o
       // Remove the word from the local state
       setDirectoryWords(prev => prev.filter(word => word.id !== wordId));
       showNotification('Word deleted successfully!', 'success');
+      // Refresh directories in MemorizePage if it exists
+      if (window.refreshDirectories) {
+        window.refreshDirectories();
+      }
     } catch (error) {
       console.error('Error deleting word:', error);
       showNotification('Failed to delete word. Please try again.', 'error');
@@ -448,6 +456,10 @@ function DictionaryPage({ directories, words, onDeleteWord, onDeleteDirectory, o
                     // Refresh the directory words
                     const updatedWords = await fetchWordsByDirectory(currentViewedDirectory);
                     setDirectoryWords(updatedWords);
+                    // Refresh directories in MemorizePage if it exists
+                    if (window.refreshDirectories) {
+                      window.refreshDirectories();
+                    }
                   } catch (error) {
                     console.error('Error adding word:', error);
                     showNotification('Failed to add word. Please try again.', 'error');

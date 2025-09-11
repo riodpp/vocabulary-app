@@ -25,6 +25,18 @@ struct TranslateResponse {
     translation: String,
 }
 
+// Sentence explanation structs
+#[derive(Deserialize)]
+struct ExplainSentenceRequest {
+    sentence: String,
+}
+
+#[derive(Serialize)]
+struct ExplainSentenceResponse {
+    translation: String,
+    explanation: String,
+}
+
 // Translation function using OpenRouter API
 async fn translate_text(text: &str, from: Option<String>, to: Option<String>) -> Result<String> {
     println!("Starting translation for: {} (from: {:?}, to: {:?})", text, from, to);
@@ -120,6 +132,119 @@ async fn translate_text(text: &str, from: Option<String>, to: Option<String>) ->
 
     println!("Final translation: {}", translation);
     Ok(translation)
+}
+
+// Sentence explanation function using OpenRouter API
+async fn explain_sentence(sentence: &str) -> Result<String> {
+    println!("Starting sentence explanation for: {}", sentence);
+
+    let openrouter_api_key = match std::env::var("OPENROUTER_API_KEY") {
+        Ok(key) => {
+            println!("OpenRouter API key found (length: {})", key.len());
+            key
+        }
+        Err(_) => {
+            println!("OpenRouter API key not found in environment");
+            return Err(actix_web::error::ErrorInternalServerError("OpenRouter API key not configured"));
+        }
+    };
+
+    let client = Client::new();
+
+    let request_body = serde_json::json!({
+        "model": "openrouter/sonoma-dusk-alpha",
+        "messages": [
+            {
+                "role": "system",
+                "content": "You are an assistant that analyzes English sentences for Indonesian learners. Focus on grammar, context, and natural alternatives. Use this format:\n\n1. **Grammar Analysis** - Break down tenses, aspects, subject-verb-object structure, and key grammar points\n2. **Context** - Describe if it is formal, informal, conversational, or literary style\n3. **Natural Alternatives** - Suggest more natural ways to express the same idea in Indonesian"
+            },
+            {
+                "role": "user",
+                "content": format!("Please explain this English sentence: \"{}\"", sentence)
+            }
+        ],
+        "max_tokens": 500,
+        "temperature": 0.5
+    });
+
+    println!("Sending sentence explanation request to OpenRouter API...");
+    let response = client
+        .post("https://openrouter.ai/api/v1/chat/completions")
+        .header("Authorization", format!("Bearer {}", openrouter_api_key))
+        .header("Content-Type", "application/json")
+        .json(&request_body)
+        .send()
+        .await
+        .map_err(|e| {
+            println!("OpenRouter API request failed: {:?}", e);
+            actix_web::error::ErrorInternalServerError("Explanation service temporarily unavailable")
+        })?;
+
+    println!("OpenRouter API response status: {}", response.status());
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        println!("OpenRouter API error ({}): {}", status, error_text);
+        return Err(actix_web::error::ErrorInternalServerError("Explanation service error"));
+    }
+
+    let response_text = response.text().await
+        .map_err(|e| {
+            println!("Failed to read response text: {:?}", e);
+            actix_web::error::ErrorInternalServerError("Explanation service error")
+        })?;
+
+    println!("Raw response: {}", response_text);
+
+    let response_json: serde_json::Value = serde_json::from_str(&response_text)
+        .map_err(|e| {
+            println!("Failed to parse JSON response: {:?}, Raw: {}", e, response_text);
+            actix_web::error::ErrorInternalServerError("Explanation service error")
+        })?;
+
+    println!("Parsed JSON response successfully");
+
+    let explanation = response_json["choices"][0]["message"]["content"]
+        .as_str()
+        .unwrap_or("Explanation unavailable")
+        .trim()
+        .to_string();
+
+    println!("Final explanation: {}", explanation);
+    Ok(explanation)
+}
+
+// Sentence explanation endpoint handler
+async fn explain_sentence_handler(
+    req: web::Json<ExplainSentenceRequest>,
+) -> Result<HttpResponse> {
+    println!("Received sentence explanation request for: {}", req.sentence);
+
+    // Get both translation and explanation
+    let translation_result = translate_text(&req.sentence, Some("en".to_string()), Some("id".to_string())).await;
+    let explanation_result = explain_sentence(&req.sentence).await;
+
+    match (translation_result, explanation_result) {
+        (Ok(translation), Ok(explanation)) => {
+            println!("Sentence explanation successful");
+            let response = ApiResponse::success(
+                "Sentence explained successfully".to_string(),
+                ExplainSentenceResponse { translation, explanation }
+            );
+            Ok(HttpResponse::Ok().json(response))
+        }
+        (Err(e), _) => {
+            println!("Translation failed: {:?}", e);
+            let response = ApiResponse::<()>::error("Translation service temporarily unavailable".to_string());
+            Ok(HttpResponse::InternalServerError().json(response))
+        }
+        (_, Err(e)) => {
+            println!("Explanation failed: {:?}", e);
+            let response = ApiResponse::<()>::error("Explanation service temporarily unavailable".to_string());
+            Ok(HttpResponse::InternalServerError().json(response))
+        }
+    }
 }
 
 // Translation endpoint handler
@@ -343,6 +468,8 @@ async fn main() -> IoResult<()> {
             .route("/health", web::get().to(|| async { "OK" }))
             // Translation endpoint
             .route("/ai-translate", web::post().to(ai_translate))
+            // Sentence explanation endpoint
+            .route("/explain-sentence", web::post().to(explain_sentence_handler))
             // db-check route removed - SQLite no longer used
             // Authentication routes only - vocabulary data handled locally
             .route("/auth/register", web::post().to(register))

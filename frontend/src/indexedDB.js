@@ -1,6 +1,6 @@
 // IndexedDB utilities for vocabulary app local storage
 const DB_NAME = 'VocabularyAppDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 // Open database connection
 export const openDB = () => {
@@ -12,6 +12,7 @@ export const openDB = () => {
 
     request.onupgradeneeded = (event) => {
       const db = event.target.result;
+      const oldVersion = event.oldVersion;
 
       // Create words object store
       if (!db.objectStoreNames.contains('words')) {
@@ -32,6 +33,32 @@ export const openDB = () => {
         progressStore.createIndex('directory_id', 'directory_id', { unique: false });
         progressStore.createIndex('timestamp', 'timestamp', { unique: false });
       }
+
+      // Handle migration to version 2: Add progress fields to words
+      if (oldVersion < 2) {
+        const transaction = event.target.transaction;
+        const wordsStore = transaction.objectStore('words');
+
+        // Get all existing words and update them with progress fields
+        const getAllRequest = wordsStore.getAll();
+        getAllRequest.onsuccess = () => {
+          const words = getAllRequest.result;
+          words.forEach(word => {
+            // Add progress fields if they don't exist
+            if (!word.hasOwnProperty('correct_count')) {
+              word.correct_count = 0;
+            }
+            if (!word.hasOwnProperty('wrong_count')) {
+              word.wrong_count = 0;
+            }
+            if (!word.hasOwnProperty('last_practiced')) {
+              word.last_practiced = null;
+            }
+            // Update the word
+            wordsStore.put(word);
+          });
+        };
+      }
     };
   });
 };
@@ -44,6 +71,9 @@ export const saveWord = async (word) => {
 
   const wordData = {
     ...word,
+    correct_count: word.correct_count || 0,
+    wrong_count: word.wrong_count || 0,
+    last_practiced: word.last_practiced || null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   };
@@ -87,6 +117,9 @@ export const updateWord = async (word) => {
 
   const wordData = {
     ...word,
+    correct_count: word.correct_count || 0,
+    wrong_count: word.wrong_count || 0,
+    last_practiced: word.last_practiced || null,
     updated_at: new Date().toISOString()
   };
 
@@ -106,6 +139,33 @@ export const deleteWord = async (wordId) => {
     const request = store.delete(wordId);
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
+  });
+};
+
+export const updateWordProgress = async (wordId, isCorrect) => {
+  const db = await openDB();
+  const transaction = db.transaction(['words'], 'readwrite');
+  const store = transaction.objectStore('words');
+
+  return new Promise((resolve, reject) => {
+    const getRequest = store.get(wordId);
+    getRequest.onsuccess = () => {
+      const word = getRequest.result;
+      if (word) {
+        // Update progress fields
+        word.correct_count = (word.correct_count || 0) + (isCorrect ? 1 : 0);
+        word.wrong_count = (word.wrong_count || 0) + (isCorrect ? 0 : 1);
+        word.last_practiced = new Date().toISOString();
+        word.updated_at = new Date().toISOString();
+
+        const putRequest = store.put(word);
+        putRequest.onsuccess = () => resolve(putRequest.result);
+        putRequest.onerror = () => reject(putRequest.error);
+      } else {
+        reject(new Error('Word not found'));
+      }
+    };
+    getRequest.onerror = () => reject(getRequest.error);
   });
 };
 
