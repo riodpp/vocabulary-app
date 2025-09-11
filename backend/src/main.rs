@@ -16,6 +16,8 @@ use crate::models::*;
 #[derive(Deserialize)]
 struct TranslateRequest {
     text: String,
+    from: Option<String>,
+    to: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -24,8 +26,8 @@ struct TranslateResponse {
 }
 
 // Translation function using OpenRouter API
-async fn translate_text(text: &str) -> Result<String> {
-    println!("Starting translation for: {}", text);
+async fn translate_text(text: &str, from: Option<String>, to: Option<String>) -> Result<String> {
+    println!("Starting translation for: {} (from: {:?}, to: {:?})", text, from, to);
 
     let openrouter_api_key = match std::env::var("OPENROUTER_API_KEY") {
         Ok(key) => {
@@ -40,16 +42,32 @@ async fn translate_text(text: &str) -> Result<String> {
 
     let client = Client::new();
 
+    // Determine source and target languages
+    let from_lang = from.as_deref().unwrap_or("en");
+    let to_lang = to.as_deref().unwrap_or("id");
+
+    let from_language_name = match from_lang {
+        "en" => "English",
+        "id" => "Indonesian",
+        _ => "English"
+    };
+
+    let to_language_name = match to_lang {
+        "en" => "English",
+        "id" => "Indonesian",
+        _ => "Indonesian"
+    };
+
     let request_body = serde_json::json!({
         "model": "openrouter/sonoma-dusk-alpha",
         "messages": [
             {
                 "role": "system",
-                "content": "You are a professional translator. Translate the given English text to Indonesian. Only return the translation, nothing else."
+                "content": format!("You are a professional translator. Translate the given {} text to {}. Only return the translation, nothing else.", from_language_name, to_language_name)
             },
             {
                 "role": "user",
-                "content": format!("Translate this English text to Indonesian: {}", text)
+                "content": format!("Translate this {} text to {}: {}", from_language_name, to_language_name, text)
             }
         ],
         "max_tokens": 100,
@@ -108,9 +126,9 @@ async fn translate_text(text: &str) -> Result<String> {
 async fn ai_translate(
     req: web::Json<TranslateRequest>,
 ) -> Result<HttpResponse> {
-    println!("Received translation request for: {}", req.text);
+    println!("Received translation request for: {} (from: {:?}, to: {:?})", req.text, req.from, req.to);
 
-    match translate_text(&req.text).await {
+    match translate_text(&req.text, req.from.clone(), req.to.clone()).await {
         Ok(translation) => {
             println!("Translation successful: {} -> {}", req.text, translation);
             let response = ApiResponse::success(

@@ -31,11 +31,11 @@ function QuickWordForm({ onAddWord, selectedDirectoryId, showNotification }) {
     }
   };
 
-  const fetchTranslation = async (text) => {
+  const fetchTranslation = async (text, from = 'en', to = 'id') => {
     if (!text.trim()) return;
     setIsTranslating(true);
     try {
-      const response = await axios.post(`${API_BASE}/ai-translate`, { text });
+      const response = await axios.post(`${API_BASE}/ai-translate`, { text, from, to });
 
       // Access the nested data field from ApiResponse
       let translatedText = '';
@@ -88,7 +88,7 @@ function QuickWordForm({ onAddWord, selectedDirectoryId, showNotification }) {
       if (!finalTranslation || finalTranslation.trim() === '') {
         setIsTranslating(true);
         try {
-          const response = await axios.post(`${API_BASE}/ai-translate`, { text: english });
+          const response = await axios.post(`${API_BASE}/ai-translate`, { text: english, from: 'en', to: 'id' });
           const translatedText = response.data.data?.translation ||
                                 response.data.data?.translated ||
                                 response.data.data?.result ||
@@ -315,7 +315,7 @@ function DictionaryPage({ directories, words, onDeleteWord, onDeleteDirectory, o
         return;
       }
 
-      const response = await axios.post(`${API_BASE}/ai-translate`, { text: word.english });
+      const response = await axios.post(`${API_BASE}/ai-translate`, { text: word.english, from: 'en', to: 'id' });
       if (response.data.data?.translation) {
         await updateWordTranslation(wordId, response.data.data.translation);
         // Update local state if we're currently editing this word
