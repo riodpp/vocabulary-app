@@ -498,7 +498,7 @@ function DictionaryPage({ directories, words, onDeleteWord, onDeleteDirectory, o
                             </button>
                           </div>
                         ) : (
-                          <div className="translation-section">
+                          <div>
                             <span className="indonesian">{word.indonesian}</span>
                             <button
                               className="edit-btn"
