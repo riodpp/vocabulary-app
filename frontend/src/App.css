@@ -781,6 +781,66 @@
   box-shadow: var(--shadow-md);
 }
 
+/* Directory Search Styles */
+.directory-search {
+  margin: var(--spacing-lg) 0;
+}
+
+.search-input {
+  width: 100%;
+  padding: var(--spacing-md);
+  border: 2px solid var(--gray-300);
+  border-radius: var(--radius-lg);
+  font-size: 16px;
+  font-family: var(--font-family-primary);
+  transition: var(--transition-normal);
+  background-color: white;
+  color: var(--gray-800);
+  box-sizing: border-box;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 3px var(--primary-100);
+}
+
+.search-input::placeholder {
+  color: var(--gray-400);
+}
+
+/* Scrollable Directory List Container */
+.directory-list-container {
+  max-height: 400px;
+  overflow-y: auto;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--gray-200);
+  background: linear-gradient(135deg, var(--gray-50) 0%, var(--gray-100) 100%);
+  padding: var(--spacing-sm);
+}
+
+.directory-list-container ul {
+  margin: 0;
+}
+
+.directory-list-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.directory-list-container::-webkit-scrollbar-track {
+  background: var(--gray-100);
+  border-radius: 4px;
+}
+
+.directory-list-container::-webkit-scrollbar-thumb {
+  background: var(--primary-400);
+  border-radius: 4px;
+}
+
+.directory-list-container::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-500);
+}
+
 /* Flashcard Styles */
 .flashcard-container {
   perspective: 1000px;
