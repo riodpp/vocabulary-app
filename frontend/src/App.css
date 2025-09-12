@@ -1901,6 +1901,7 @@
 
   .nav-container.open {
     transform: translateX(0);
+    width: 50%;
   }
 
   .nav-links-container {
@@ -1945,8 +1946,8 @@
   }
 
   .user-info {
-    margin: 20px 24px 20px 24px;
-    padding: 16px;
+    margin: 20px 12px 20px 12px;
+    padding: 12px;
     background: linear-gradient(135deg, var(--primary-50) 0%, var(--primary-100) 100%);
     border-radius: 12px;
     border: 1px solid var(--primary-200);
