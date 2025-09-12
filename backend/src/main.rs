@@ -1,6 +1,7 @@
 use actix_web::{web, App, HttpServer, Result, middleware::Logger, HttpResponse};
 use actix_web::HttpRequest;
 use actix_cors::Cors;
+use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use std::io::Result as IoResult;
 use sqlx::PgPool;
@@ -603,6 +604,17 @@ async fn main() -> IoResult<()> {
             .route("/auth/login", web::post().to(login))
             .route("/auth/logout", web::post().to(logout))
             .route("/auth/profile", web::get().to(get_profile))
+            // Catch-all route to serve React app for client-side routing
+            .route("/{path:.*}", web::get().to(|| async {
+                let index_path = PathBuf::from("../frontend/build/index.html");
+                match std::fs::read_to_string(&index_path) {
+                    Ok(content) => Ok::<HttpResponse, std::io::Error>(HttpResponse::Ok()
+                        .content_type("text/html")
+                        .body(content)),
+                    Err(_) => Ok::<HttpResponse, std::io::Error>(HttpResponse::NotFound()
+                        .body("Frontend not built. Please run 'npm run build' in the frontend directory."))
+                }
+            }))
     })
     .bind("0.0.0.0:8080")?
     .run()

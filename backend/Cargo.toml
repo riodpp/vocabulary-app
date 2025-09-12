@@ -12,6 +12,7 @@ edition = "2021"
 [dependencies]
 actix-web = "4"
 actix-cors = "0.6"
+actix-files = "0.6"
 actix-session = { version = "0.11", features = ["redis-session"] }
 # SQLite removed - vocabulary data now handled locally in frontend
 sqlx = { version = "0.8.0", features = ["runtime-tokio-rustls", "postgres", "chrono", "uuid"] }

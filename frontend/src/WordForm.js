@@ -13,6 +13,7 @@ function WordForm({ showNotification, isEnglish }) {
   const [validationError, setValidationError] = useState('');
   const [directories, setDirectories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [lastSavedDirectory, setLastSavedDirectory] = useState(null);
 
   const API_BASE = process.env.REACT_APP_API_URL || 'https://vocabulary-app-backend.fly.dev';
 
@@ -110,6 +111,12 @@ function WordForm({ showNotification, isEnglish }) {
       const savedWord = await saveWord(wordData);
       console.log('✅ Word saved to local storage:', savedWord);
 
+      // Find the directory name that was used for saving
+      const savedDirectory = directories.find(dir => dir.id === parseInt(selectedDirectory));
+      if (savedDirectory) {
+        setLastSavedDirectory(savedDirectory);
+      }
+
       showNotification('Word added successfully!', 'success');
       resetForm();
     } catch (error) {
@@ -132,6 +139,7 @@ function WordForm({ showNotification, isEnglish }) {
     // Keep selectedDirectory persistent
     setIsSubmitting(false);
     setValidationError('');
+    // Don't clear lastSavedDirectory - keep it visible as a shortcut
   };
 
   if (loading) {
@@ -231,6 +239,28 @@ function WordForm({ showNotification, isEnglish }) {
           </button>
         </div>
       </form>
+
+      {lastSavedDirectory && (
+        <div className="last-saved-directory">
+          <div className="last-saved-header">
+            <span className="last-saved-icon">📁</span>
+            <span className="last-saved-text">Last saved to:</span>
+            <button
+              type="button"
+              className="last-saved-directory-btn"
+              onClick={() => {
+                // Store the directory ID for the dictionary page to use
+                localStorage.setItem('autoSelectDirectory', lastSavedDirectory.id.toString());
+                // Navigate to dictionary page using hash
+                window.location.hash = '#/dictionary';
+              }}
+              title="View all words in this directory"
+            >
+              {lastSavedDirectory.name}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
