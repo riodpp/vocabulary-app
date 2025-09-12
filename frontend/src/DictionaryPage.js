@@ -203,13 +203,17 @@ function QuickWordForm({ onAddWord, selectedDirectoryId, showNotification }) {
   );
 }
 
-function DictionaryPage({ directories, words, onDeleteWord, onDeleteDirectory, onViewWords, viewedDirectory, viewedDirectoryName, viewedDirectoryWords, onRefreshWords, onAddDirectory, showNotification }) {
+function DictionaryPage({ directories, words, onDeleteWord, onDeleteDirectory, onViewWords, viewedDirectory, viewedDirectoryName, viewedDirectoryWords, onRefreshWords, onAddDirectory, showNotification, showModal, hideModal }) {
 
   const [directoryWords, setDirectoryWords] = useState([]);
   const [localDirectories, setLocalDirectories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentViewedDirectory, setCurrentViewedDirectory] = useState(null);
   const [currentViewedDirectoryName, setCurrentViewedDirectoryName] = useState('');
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10; // Show 10 words per page
 
   // Load directories from local storage
   useEffect(() => {
@@ -218,6 +222,27 @@ function DictionaryPage({ directories, words, onDeleteWord, onDeleteDirectory, o
         const localDirs = await getAllDirectories();
         setLocalDirectories(localDirs);
         setLoading(false);
+
+        // Check if there's an auto-select directory from navigation
+        const autoSelectDirId = localStorage.getItem('autoSelectDirectory');
+        if (autoSelectDirId) {
+          localStorage.removeItem('autoSelectDirectory'); // Clear it after use
+          const directoryId = parseInt(autoSelectDirId);
+          const directory = localDirs.find(d => d.id === directoryId);
+          if (directory) {
+            // Auto-select this directory with proper name
+            setCurrentViewedDirectory(directoryId);
+            setCurrentViewedDirectoryName(directory.name);
+            // Fetch words for this directory
+            fetchWordsByDirectory(directoryId).then(words => {
+              setDirectoryWords(words);
+              setCurrentPage(1); // Reset to first page
+            }).catch(error => {
+              console.error('Error fetching words for auto-selected directory:', error);
+              setDirectoryWords([]);
+            });
+          }
+        }
       } catch (error) {
         console.error('Error loading directories:', error);
         setLocalDirectories([]); // Ensure it's always an array
@@ -227,6 +252,16 @@ function DictionaryPage({ directories, words, onDeleteWord, onDeleteDirectory, o
 
     loadDirectories();
   }, []);
+
+  // Ensure directory name is available when viewing a directory
+  useEffect(() => {
+    if (currentViewedDirectory && !currentViewedDirectoryName && localDirectories.length > 0) {
+      const directory = localDirectories.find(d => d.id === currentViewedDirectory);
+      if (directory) {
+        setCurrentViewedDirectoryName(directory.name);
+      }
+    }
+  }, [currentViewedDirectory, currentViewedDirectoryName, localDirectories]);
 
   // Function to fetch words for a specific directory from local storage
   const fetchWordsByDirectory = async (directoryId) => {
@@ -244,18 +279,20 @@ function DictionaryPage({ directories, words, onDeleteWord, onDeleteDirectory, o
     if (directoryId) {
       // Find the directory name
       const directory = localDirectories.find(d => d.id === directoryId);
-      const directoryName = directory ? directory.name : '';
+      const directoryName = directory ? directory.name : `Directory ${directoryId}`;
 
       // Fetch words for this directory
       const words = await fetchWordsByDirectory(directoryId);
       setDirectoryWords(words);
       setCurrentViewedDirectory(directoryId);
       setCurrentViewedDirectoryName(directoryName);
+      setCurrentPage(1); // Reset to first page when switching directories
     } else {
       // Clear words when closing directory view
       setDirectoryWords([]);
       setCurrentViewedDirectory(null);
       setCurrentViewedDirectoryName('');
+      setCurrentPage(1);
     }
   };
 
@@ -379,22 +416,37 @@ function DictionaryPage({ directories, words, onDeleteWord, onDeleteDirectory, o
     }
   };
 
-  const handleDeleteDirectory = async (directoryId, directoryName) => {
-    try {
-      await deleteDirectory(directoryId);
-      setLocalDirectories(prev => prev.filter(dir => dir.id !== directoryId));
-      showNotification(`Directory "${directoryName}" deleted successfully!`, 'success');
-    } catch (error) {
-      console.error('Error deleting directory:', error);
-      showNotification('Failed to delete directory. Please try again.', 'error');
-    }
+  const handleDeleteDirectory = (directoryId, directoryName) => {
+    showModal(
+      `Are you sure you want to delete the directory "${directoryName}"? This action cannot be undone.`,
+      async () => {
+        try {
+          await deleteDirectory(directoryId);
+          setLocalDirectories(prev => prev.filter(dir => dir.id !== directoryId));
+          showNotification(`Directory "${directoryName}" deleted successfully!`, 'success');
+          hideModal();
+        } catch (error) {
+          console.error('Error deleting directory:', error);
+          showNotification('Failed to delete directory. Please try again.', 'error');
+          hideModal();
+        }
+      }
+    );
   };
 
   const handleDeleteWord = async (wordId) => {
     try {
       await deleteWord(wordId);
       // Remove the word from the local state
-      setDirectoryWords(prev => prev.filter(word => word.id !== wordId));
+      setDirectoryWords(prev => {
+        const updatedWords = prev.filter(word => word.id !== wordId);
+        // Adjust current page if necessary
+        const totalPages = Math.ceil(updatedWords.length / itemsPerPage);
+        if (currentPage > totalPages && totalPages > 0) {
+          setCurrentPage(totalPages);
+        }
+        return updatedWords;
+      });
       showNotification('Word deleted successfully!', 'success');
       // Refresh directories in MemorizePage if it exists
       if (window.refreshDirectories) {
@@ -403,6 +455,29 @@ function DictionaryPage({ directories, words, onDeleteWord, onDeleteDirectory, o
     } catch (error) {
       console.error('Error deleting word:', error);
       showNotification('Failed to delete word. Please try again.', 'error');
+    }
+  };
+
+  // Pagination calculations
+  const totalPages = Math.ceil(directoryWords.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentWords = directoryWords.slice(startIndex, endIndex);
+
+  // Pagination handlers
+  const handlePageChange = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
     }
   };
 
@@ -445,7 +520,7 @@ function DictionaryPage({ directories, words, onDeleteWord, onDeleteDirectory, o
           {currentViewedDirectory ? (
             <div className="directory-words">
               <div className="directory-header">
-                <h2>Words in "{currentViewedDirectoryName}"</h2>
+                <h2>Words in "{currentViewedDirectoryName || 'Selected Directory'}"</h2>
                 <button className="close-btn" onClick={() => handleViewWords(null)}>×</button>
               </div>
               <QuickWordForm
@@ -469,8 +544,12 @@ function DictionaryPage({ directories, words, onDeleteWord, onDeleteDirectory, o
                 showNotification={showNotification}
               />
               {directoryWords.length > 0 ? (
-                <ul className="word-list">
-                  {directoryWords.map(word => (
+                <>
+                  <div className="words-info">
+                    <span>Showing {startIndex + 1}-{Math.min(endIndex, directoryWords.length)} of {directoryWords.length} words</span>
+                  </div>
+                  <ul className="word-list">
+                    {currentWords.map(word => (
                     <li key={word.id} className="word-item">
                       <div className="word-content">
                         <div className="english-section">
@@ -525,7 +604,41 @@ function DictionaryPage({ directories, words, onDeleteWord, onDeleteDirectory, o
                       </button>
                     </li>
                   ))}
-                </ul>
+                  </ul>
+
+                  {/* Pagination Controls */}
+                  {totalPages > 1 && (
+                    <div className="pagination-controls">
+                      <button
+                        className="pagination-btn"
+                        onClick={handlePrevPage}
+                        disabled={currentPage === 1}
+                      >
+                        ‹ Previous
+                      </button>
+
+                      <div className="pagination-pages">
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNum => (
+                          <button
+                            key={pageNum}
+                            className={`pagination-page ${currentPage === pageNum ? 'active' : ''}`}
+                            onClick={() => handlePageChange(pageNum)}
+                          >
+                            {pageNum}
+                          </button>
+                        ))}
+                      </div>
+
+                      <button
+                        className="pagination-btn"
+                        onClick={handleNextPage}
+                        disabled={currentPage === totalPages}
+                      >
+                        Next ›
+                      </button>
+                    </div>
+                  )}
+                </>
               ) : (
                 <p>No words in this directory yet.</p>
               )}

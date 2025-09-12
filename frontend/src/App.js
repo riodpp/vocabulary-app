@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import axios from 'axios';
 import Navigation from './Navigation';
 import HomePage from './HomePage';
@@ -101,6 +101,15 @@ function App() {
     window.location.hash = '#/login';
   };
 
+  // Modal functions
+  const showModal = (message, onConfirm) => {
+    setModal({ isOpen: true, message, onConfirm });
+  };
+
+  const hideModal = () => {
+    setModal({ isOpen: false, message: '', onConfirm: null });
+  };
+
   // Show loading spinner while checking authentication
   if (isLoading) {
     return (
@@ -176,6 +185,8 @@ function App() {
               user ? (
                 <DictionaryPage
                   showNotification={showNotification}
+                  showModal={showModal}
+                  hideModal={hideModal}
                 />
               ) : (
                 <LoginPage onLogin={handleLogin} showNotification={showNotification} />
