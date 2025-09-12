@@ -758,6 +758,21 @@
   flex: 1;
 }
 
+.directory-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  cursor: pointer;
+}
+
+.word-count {
+  color: #666;
+  font-size: 0.9em;
+  font-weight: 500;
+  margin-left: 8px;
+}
+
 .delete-dir-btn {
   background: linear-gradient(135deg, var(--error) 0%, #dc2626 100%);
   color: white;
@@ -811,7 +826,7 @@
 
 /* Scrollable Directory List Container */
 .directory-list-container {
-  max-height: 400px;
+  max-height: 200px;
   overflow-y: auto;
   border-radius: var(--radius-lg);
   border: 1px solid var(--gray-200);
@@ -821,6 +836,10 @@
 
 .directory-list-container ul {
   margin: 0;
+}
+
+.directory-list-container li {
+  height: 20px;
 }
 
 .directory-list-container::-webkit-scrollbar {

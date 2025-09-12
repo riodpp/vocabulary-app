@@ -203,7 +203,7 @@ function QuickWordForm({ onAddWord, selectedDirectoryId, showNotification }) {
   );
 }
 
-function DictionaryPage({ directories, words, onDeleteWord, onDeleteDirectory, onViewWords, viewedDirectory, viewedDirectoryName, viewedDirectoryWords, onRefreshWords, onAddDirectory, showNotification }) {
+function DictionaryPage({ directories, words, onDeleteWord, onDeleteDirectory, onViewWords, viewedDirectory, viewedDirectoryName, viewedDirectoryWords, onRefreshWords, onAddDirectory, showNotification, showModal, hideModal }) {
 
   const [directoryWords, setDirectoryWords] = useState([]);
   const [localDirectories, setLocalDirectories] = useState([]);
@@ -416,15 +416,22 @@ function DictionaryPage({ directories, words, onDeleteWord, onDeleteDirectory, o
     }
   };
 
-  const handleDeleteDirectory = async (directoryId, directoryName) => {
-    try {
-      await deleteDirectory(directoryId);
-      setLocalDirectories(prev => prev.filter(dir => dir.id !== directoryId));
-      showNotification(`Directory "${directoryName}" deleted successfully!`, 'success');
-    } catch (error) {
-      console.error('Error deleting directory:', error);
-      showNotification('Failed to delete directory. Please try again.', 'error');
-    }
+  const handleDeleteDirectory = (directoryId, directoryName) => {
+    showModal(
+      `Are you sure you want to delete the directory "${directoryName}"? This action cannot be undone.`,
+      async () => {
+        try {
+          await deleteDirectory(directoryId);
+          setLocalDirectories(prev => prev.filter(dir => dir.id !== directoryId));
+          showNotification(`Directory "${directoryName}" deleted successfully!`, 'success');
+          hideModal();
+        } catch (error) {
+          console.error('Error deleting directory:', error);
+          showNotification('Failed to delete directory. Please try again.', 'error');
+          hideModal();
+        }
+      }
+    );
   };
 
   const handleDeleteWord = async (wordId) => {
