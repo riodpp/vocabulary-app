@@ -19,6 +19,7 @@ function SentenceExplanation({ showNotification }) {
   const [isDirectoryModalOpen, setIsDirectoryModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isTranslatingWords, setIsTranslatingWords] = useState(false);
+  const [characterCount, setCharacterCount] = useState(0);
 
   const API_BASE = process.env.REACT_APP_API_URL || 'https://vocabulary-app-backend.fly.dev';
 
@@ -129,6 +130,11 @@ function SentenceExplanation({ showNotification }) {
     loadDirectories();
   }, []);
 
+  // Update character count when sentence changes
+  useEffect(() => {
+    setCharacterCount(sentence.length);
+  }, [sentence]);
+
   const handleExplain = async () => {
     if (!sentence.trim()) {
       showNotification('Please enter a sentence to explain.', 'error');
@@ -192,6 +198,18 @@ function SentenceExplanation({ showNotification }) {
     setWordTranslations({});
     setIncludedWords(new Set());
     setIsExplanationCollapsed(false);
+    setCharacterCount(0);
+  };
+
+  // Calculate character counts
+  const getCharacterCounts = () => {
+    const totalChars = sentence.length;
+    const words = sentence.trim().split(/\s+/).filter(word => word.length > 0);
+    const wordCounts = words.map(word => ({
+      word: word,
+      count: word.length
+    }));
+    return { totalChars, wordCounts };
   };
 
   // Handle word inclusion toggle
@@ -265,6 +283,11 @@ function SentenceExplanation({ showNotification }) {
           className="sentence-input"
           maxLength="200"
         />
+        <div className="character-counter">
+          <span className={`character-count ${characterCount > 180 ? 'warning' : ''} ${characterCount >= 200 ? 'error' : ''}`}>
+            {characterCount}/200
+          </span>
+        </div>
       </div>
       <div className="button-section">
         <button
