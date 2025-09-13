@@ -1,10 +1,17 @@
 .auth-container {
-  min-height: 100vh;
+  min-height: 90vh;
   display: flex;
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 20px;
+}
+
+/* Desktop view - 80vh */
+@media (min-width: 769px) {
+  .auth-container {
+    min-height: 70vh;
+  }
 }
 
 .auth-card {
