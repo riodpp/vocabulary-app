@@ -171,6 +171,7 @@ function WordForm({ showNotification, isEnglish }) {
             placeholder={isEnglish ? "English word" : "Kata Bahasa Indonesia"}
             required
             className={validationError ? 'error' : ''}
+            maxLength="50"
           />
           <button
             type="button"

@@ -263,6 +263,7 @@ function SentenceExplanation({ showNotification }) {
           placeholder="Enter your sentence here..."
           rows="4"
           className="sentence-input"
+          maxLength="500"
         />
       </div>
       <div className="button-section">
