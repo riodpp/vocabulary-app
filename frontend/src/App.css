@@ -2530,6 +2530,37 @@
   box-shadow: none;
 }
 
+/* Character Counter */
+.character-counter {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+  padding: 0 4px;
+}
+
+.character-count {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gray-600);
+  background: var(--gray-100);
+  padding: 4px 8px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--gray-300);
+  transition: var(--transition-fast);
+}
+
+.character-count.warning {
+  color: var(--warning);
+  background: var(--warning-light);
+  border-color: var(--warning);
+}
+
+.character-count.error {
+  color: var(--error);
+  background: var(--error-light);
+  border-color: var(--error);
+}
+
 /* Language Toggle Container */
 .language-toggle-container {
   text-align: center;

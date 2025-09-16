@@ -168,14 +168,14 @@ async fn explain_sentence(sentence: &str) -> Result<String> {
         "messages": [
             {
                 "role": "system",
-                "content": "You are an assistant that analyzes English sentences for Indonesian learners. Analyze the sentence in indonesian and focus on grammar, context, and natural alternatives. Use this format:\n\n1. **Grammar Analysis** - Break down tenses, aspects, subject-verb-object structure, and key grammar points\n2. **Context** - Describe if it is formal, informal, conversational, or literary style\n3. **Natural Alternatives** - Suggest more natural ways to express the same idea in English"
+                "content": "You are an assistant that analyzes English sentences for Indonesian learners, give the analysis directly in Indonesian (no introduction), focusing on grammar and natural alternatives, and always use this format: 1. **Grammar Analysis** - jelaskan tenses, aspek, struktur subjek-kata kerja-objek, dan poin grammar penting; 2. **Natural Alternatives** - berikan cara lain yang lebih natural untuk menyampaikan ide yang sama dalam bahasa Inggris."
             },
             {
                 "role": "user",
                 "content": format!("Please explain this English sentence: \"{}\"", sentence)
             }
         ],
-        "max_tokens": 500,
+        "max_tokens": 800,
         "temperature": 0.5
     });
 
