@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route } from 'react-router-dom';
-import axios from 'axios';
+import { supabase } from './supabase';
 import Navigation from './Navigation';
 import HomePage from './HomePage';
 import DictionaryPage from './DictionaryPage';
@@ -20,22 +20,39 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing authentication
-    const token = localStorage.getItem('authToken');
-    const savedUser = localStorage.getItem('user');
-
-    if (token && savedUser) {
-      try {
-        const parsedUser = JSON.parse(savedUser);
-        setUser(parsedUser);
-        // Set default authorization header for all axios requests
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      } catch (error) {
-        console.error('Error parsing saved user data:', error);
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('user');
+    // Get initial session
+    const getInitialSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const user = {
+          id: session.user.id,
+          email: session.user.email,
+          first_name: session.user.user_metadata?.first_name || '',
+          last_name: session.user.user_metadata?.last_name || '',
+        };
+        setUser(user);
       }
-    }
+      setIsLoading(false);
+    };
+
+    getInitialSession();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          const user = {
+            id: session.user.id,
+            email: session.user.email,
+            first_name: session.user.user_metadata?.first_name || '',
+            last_name: session.user.user_metadata?.last_name || '',
+          };
+          setUser(user);
+        } else {
+          setUser(null);
+        }
+      }
+    );
 
     // Initialize local storage for vocabulary data
     if (isIndexedDBSupported()) {
@@ -44,8 +61,8 @@ function App() {
       });
     }
 
-    setIsLoading(false);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Vocabulary data is now handled locally - no backend API calls needed
 
@@ -71,34 +88,21 @@ function App() {
   // Vocabulary data variables removed - handled locally in components
 
   // Authentication handlers
-  const handleLogin = (userData) => {
-    setUser(userData);
+  const handleLogin = () => {
     // Redirect to home page after login
     window.location.hash = '#/';
   };
 
   const handleLogout = async () => {
     try {
-      const token = localStorage.getItem('authToken');
-      const API_BASE = process.env.REACT_APP_API_URL || 'https://vocabulary-app-backend.fly.dev';
-      if (token) {
-        await axios.post(`${API_BASE}/auth/logout`, {}, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-      }
+      await supabase.auth.signOut();
+      showNotification('Logged out successfully', 'success');
+      // Redirect to login page after logout
+      window.location.hash = '#/login';
     } catch (error) {
       console.error('Logout error:', error);
+      showNotification('Logout failed', 'error');
     }
-
-    // Clear local storage and state
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('user');
-    delete axios.defaults.headers.common['Authorization'];
-    setUser(null);
-
-    showNotification('Logged out successfully', 'success');
-    // Redirect to login page after logout
-    window.location.hash = '#/login';
   };
 
   // Modal functions

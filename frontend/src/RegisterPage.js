@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { supabase } from './supabase';
 import './Auth.css';
 
 function RegisterPage({ onRegister, showNotification }) {
@@ -13,10 +13,6 @@ function RegisterPage({ onRegister, showNotification }) {
     lastName: ''
   });
   const [loading, setLoading] = useState(false);
-  const [showVerification, setShowVerification] = useState(false);
-  const [verificationCode, setVerificationCode] = useState('');
-
-  const API_BASE = process.env.REACT_APP_API_URL || 'https://vocabulary-app-backend.fly.dev';
 
   const handleInputChange = (e) => {
     setFormData({
@@ -43,90 +39,31 @@ function RegisterPage({ onRegister, showNotification }) {
     setLoading(true);
 
     try {
-      const registerData = {
+      const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
-        first_name: formData.firstName || null,
-        last_name: formData.lastName || null
-      };
+        options: {
+          data: {
+            first_name: formData.firstName || '',
+            last_name: formData.lastName || '',
+          }
+        }
+      });
 
-      const response = await axios.post(`${API_BASE}/auth/register`, registerData);
-
-      if (response.data.success) {
-        showNotification('Registration successful! Please check your email for verification code.', 'success');
-        setShowVerification(true);
-      } else {
-        showNotification(response.data.message || 'Registration failed', 'error');
+      if (error) {
+        showNotification(error.message || 'Registration failed', 'error');
+      } else if (data.user) {
+        showNotification('Registration successful! Please check your email to confirm your account.', 'success');
+        onRegister();
       }
     } catch (error) {
       console.error('Registration error:', error);
-      const message = error.response?.data?.message || 'Registration failed. Please try again.';
-      showNotification(message, 'error');
+      showNotification('Registration failed. Please try again.', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleVerification = async (e) => {
-    e.preventDefault();
-
-    try {
-      const response = await axios.post(`${API_BASE}/auth/verify-email`, {
-        email: formData.email,
-        verification_code: verificationCode
-      });
-
-      if (response.data.success) {
-        showNotification('Email verified successfully! You can now log in.', 'success');
-        // Redirect to login page
-        navigate('/login');
-      } else {
-        showNotification(response.data.message || 'Verification failed', 'error');
-      }
-    } catch (error) {
-      console.error('Verification error:', error);
-      const message = error.response?.data?.message || 'Verification failed. Please try again.';
-      showNotification(message, 'error');
-    }
-  };
-
-  if (showVerification) {
-    return (
-      <div className="auth-container">
-        <div className="auth-card">
-          <h2>Verify Your Email</h2>
-          <p>Please enter the verification code sent to {formData.email}</p>
-
-          <form onSubmit={handleVerification}>
-            <div className="form-group">
-              <label htmlFor="verificationCode">Verification Code</label>
-              <input
-                type="text"
-                id="verificationCode"
-                value={verificationCode}
-                onChange={(e) => setVerificationCode(e.target.value)}
-                placeholder="Enter 6-digit code"
-                maxLength="6"
-                required
-              />
-            </div>
-
-            <button type="submit" className="auth-button" disabled={loading}>
-              {loading ? 'Verifying...' : 'Verify Email'}
-            </button>
-          </form>
-
-          <button
-            type="button"
-            className="auth-link"
-            onClick={() => setShowVerification(false)}
-          >
-            Back to Registration
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="auth-container">

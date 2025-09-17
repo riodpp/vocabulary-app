@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { supabase } from './supabase';
 import './Auth.css';
 
 function LoginPage({ onLogin, showNotification }) {
@@ -10,10 +10,6 @@ function LoginPage({ onLogin, showNotification }) {
     password: ''
   });
   const [loading, setLoading] = useState(false);
-  const [showVerification, setShowVerification] = useState(false);
-  const [verificationCode, setVerificationCode] = useState('');
-
-  const API_BASE = process.env.REACT_APP_API_URL || 'https://vocabulary-app-backend.fly.dev';
 
   const handleInputChange = (e) => {
     setFormData({
@@ -27,92 +23,33 @@ function LoginPage({ onLogin, showNotification }) {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API_BASE}/auth/login`, formData);
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
 
-      if (response.data.success) {
-        const { token, user } = response.data.data;
-        localStorage.setItem('authToken', token);
+      if (error) {
+        showNotification(error.message || 'Login failed', 'error');
+      } else if (data.user) {
+        const user = {
+          id: data.user.id,
+          email: data.user.email,
+          first_name: data.user.user_metadata?.first_name || '',
+          last_name: data.user.user_metadata?.last_name || '',
+        };
+
         localStorage.setItem('user', JSON.stringify(user));
-
         showNotification('Login successful!', 'success');
-        onLogin(user);
-      } else {
-        if (response.data.message.includes('verify your email')) {
-          setShowVerification(true);
-          showNotification('Please verify your email first', 'info');
-        } else {
-          showNotification(response.data.message || 'Login failed', 'error');
-        }
+        onLogin();
       }
     } catch (error) {
       console.error('Login error:', error);
-      const message = error.response?.data?.message || 'Login failed. Please try again.';
-      showNotification(message, 'error');
+      showNotification('Login failed. Please try again.', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleVerification = async (e) => {
-    e.preventDefault();
-
-    try {
-      const response = await axios.post(`${API_BASE}/auth/verify-email`, {
-        email: formData.email,
-        verification_code: verificationCode
-      });
-
-      if (response.data.success) {
-        showNotification('Email verified successfully! You can now log in.', 'success');
-        setShowVerification(false);
-        setVerificationCode('');
-      } else {
-        showNotification(response.data.message || 'Verification failed', 'error');
-      }
-    } catch (error) {
-      console.error('Verification error:', error);
-      const message = error.response?.data?.message || 'Verification failed. Please try again.';
-      showNotification(message, 'error');
-    }
-  };
-
-  if (showVerification) {
-    return (
-      <div className="auth-container">
-        <div className="auth-card">
-          <h2>Verify Your Email</h2>
-          <p>Please enter the verification code sent to {formData.email}</p>
-
-          <form onSubmit={handleVerification}>
-            <div className="form-group">
-              <label htmlFor="verificationCode">Verification Code</label>
-              <input
-                type="text"
-                id="verificationCode"
-                value={verificationCode}
-                onChange={(e) => setVerificationCode(e.target.value)}
-                placeholder="Enter 6-digit code"
-                maxLength="6"
-                required
-              />
-            </div>
-
-            <button type="submit" className="auth-button" disabled={loading}>
-              {loading ? 'Verifying...' : 'Verify Email'}
-            </button>
-          </form>
-
-          <button
-            type="button"
-            className="auth-link"
-            onClick={() => setShowVerification(false)}
-          >
-            Back to Login
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="auth-container">

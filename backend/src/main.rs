@@ -8,9 +8,7 @@ use sqlx::PgPool;
 use reqwest::Client;
 
 mod models;
-mod auth;
 
-use crate::auth::AuthService;
 use crate::models::*;
 
 // Translation structs
@@ -395,142 +393,9 @@ async fn ai_translate(
     }
 }
 
-// Authentication endpoints
-async fn register(
-    req: web::Json<RegisterRequest>,
-    data: web::Data<AppState>,
-) -> Result<HttpResponse> {
-    match data.auth_service.register_user(req.into_inner()).await {
-        Ok(user) => {
-            let response = ApiResponse::success(
-                "User registered successfully. Please check your email for verification code.".to_string(),
-                serde_json::json!({
-                    "user_id": user.id,
-                    "email": user.email
-                })
-            );
-            Ok(HttpResponse::Created().json(response))
-        }
-        Err(e) => {
-            let response = ApiResponse::<()>::error(e.to_string());
-            Ok(HttpResponse::BadRequest().json(response))
-        }
-    }
-}
-
-async fn verify_email(
-    req: web::Json<VerifyEmailRequest>,
-    data: web::Data<AppState>,
-) -> Result<HttpResponse> {
-    match data.auth_service.verify_email(req.into_inner()).await {
-        Ok(user) => {
-            let response = ApiResponse::success(
-                "Email verified successfully. You can now log in.".to_string(),
-                serde_json::json!({
-                    "user_id": user.id,
-                    "email": user.email,
-                    "is_verified": user.is_verified
-                })
-            );
-            Ok(HttpResponse::Ok().json(response))
-        }
-        Err(e) => {
-            let response = ApiResponse::<()>::error(e.to_string());
-            Ok(HttpResponse::BadRequest().json(response))
-        }
-    }
-}
-
-async fn login(
-    req: web::Json<LoginRequest>,
-    data: web::Data<AppState>,
-) -> Result<HttpResponse> {
-    match data.auth_service.login_user(req.into_inner()).await {
-        Ok(auth_response) => {
-            let response = ApiResponse::success(
-                "Login successful".to_string(),
-                auth_response
-            );
-            Ok(HttpResponse::Ok().json(response))
-        }
-        Err(e) => {
-            let response = ApiResponse::<()>::error(e.to_string());
-            Ok(HttpResponse::Unauthorized().json(response))
-        }
-    }
-}
-
-async fn logout(
-    req: HttpRequest,
-    data: web::Data<AppState>,
-) -> Result<HttpResponse> {
-    if let Some(auth_header) = req.headers().get("Authorization") {
-        if let Ok(auth_str) = auth_header.to_str() {
-            if auth_str.starts_with("Bearer ") {
-                let token = &auth_str[7..]; // Remove "Bearer " prefix
-                match data.auth_service.logout_user(token).await {
-                    Ok(_) => {
-                        let response = ApiResponse::<()>::success("Logged out successfully".to_string(), ());
-                        return Ok(HttpResponse::Ok().json(response));
-                    }
-                    Err(_) => {} // Continue to error response
-                }
-            }
-        }
-    }
-
-    let response = ApiResponse::<()>::error("Invalid token".to_string());
-    Ok(HttpResponse::BadRequest().json(response))
-}
-
-async fn get_profile(
-    req: HttpRequest,
-    data: web::Data<AppState>,
-) -> Result<HttpResponse> {
-    if let Some(auth_header) = req.headers().get("Authorization") {
-        if let Ok(auth_str) = auth_header.to_str() {
-            if auth_str.starts_with("Bearer ") {
-                let token = &auth_str[7..]; // Remove "Bearer " prefix
-                match data.auth_service.validate_token(token).await {
-                    Ok(user) => {
-                        // Get user's subscription
-                        let subscription = sqlx::query_as::<_, Subscription>(
-                            "SELECT * FROM subscriptions WHERE user_id = $1 AND status = 'active' ORDER BY created_at DESC LIMIT 1"
-                        )
-                        .bind(user.id)
-                        .fetch_optional(&data.pg_pool)
-                        .await
-                        .unwrap_or(None);
-
-                        let user_response = UserResponse {
-                            id: user.id,
-                            email: user.email.clone(),
-                            first_name: user.first_name.clone(),
-                            last_name: user.last_name.clone(),
-                            is_verified: user.is_verified,
-                            subscription: subscription.map(|s| SubscriptionResponse {
-                                plan_type: s.plan_type,
-                                status: s.status,
-                                current_period_end: s.current_period_end,
-                            }),
-                        };
-
-                        let response = ApiResponse::success("Profile retrieved successfully".to_string(), user_response);
-                        return Ok(HttpResponse::Ok().json(response));
-                    }
-                    Err(_) => {} // Continue to error response
-                }
-            }
-        }
-    }
-
-    let response = ApiResponse::<()>::error("Invalid or missing token".to_string());
-    Ok(HttpResponse::Unauthorized().json(response))
-}
 
 struct AppState {
-    pg_pool: PgPool,         // PostgreSQL for user accounts only
-    auth_service: AuthService,
+    pg_pool: PgPool,         // PostgreSQL connection (may not be needed if no auth)
 }
 
 #[actix_web::main]
@@ -559,14 +424,10 @@ async fn main() -> IoResult<()> {
 
     println!("PostgreSQL initialized successfully");
     println!("Vocabulary data now handled locally in frontend - no SQLite needed");
-
-    // Initialize auth service
-    let auth_service = AuthService::new(pg_pool.clone())
-        .expect("Failed to initialize auth service");
+    println!("Authentication now handled by Supabase");
 
     let app_state = web::Data::new(AppState {
         pg_pool,
-        auth_service,
     });
 
     println!("Starting HTTP server on 0.0.0.0:8080");
@@ -597,13 +458,8 @@ async fn main() -> IoResult<()> {
             .route("/explain-sentence", web::post().to(explain_sentence_handler))
             // Vocabulary extraction endpoint
             .route("/extract-vocabulary", web::post().to(extract_vocabulary_handler))
-            // db-check route removed - SQLite no longer used
-            // Authentication routes only - vocabulary data handled locally
-            .route("/auth/register", web::post().to(register))
-            .route("/auth/verify-email", web::post().to(verify_email))
-            .route("/auth/login", web::post().to(login))
-            .route("/auth/logout", web::post().to(logout))
-            .route("/auth/profile", web::get().to(get_profile))
+            // Authentication now handled by Supabase - auth routes removed
+            // Vocabulary data handled locally
             // Catch-all route to serve React app for client-side routing
             .route("/{path:.*}", web::get().to(|| async {
                 let index_path = PathBuf::from("../frontend/build/index.html");
