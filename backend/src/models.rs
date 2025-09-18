@@ -47,8 +47,6 @@ pub struct RegisterRequest {
     pub email: String,
     #[validate(length(min = 8))]
     pub password: String,
-    pub first_name: Option<String>,
-    pub last_name: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Validate)]
@@ -67,29 +65,6 @@ pub struct VerifyEmailRequest {
     pub verification_code: String,
 }
 
-#[derive(Debug, Serialize)]
-pub struct AuthResponse {
-    pub user: UserResponse,
-    pub token: String,
-    pub expires_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct UserResponse {
-    pub id: i32,
-    pub email: String,
-    pub first_name: Option<String>,
-    pub last_name: Option<String>,
-    pub is_verified: bool,
-    pub subscription: Option<SubscriptionResponse>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct SubscriptionResponse {
-    pub plan_type: String,
-    pub status: String,
-    pub current_period_end: Option<DateTime<Utc>>,
-}
 
 #[derive(Debug, Serialize)]
 pub struct ApiResponse<T> {

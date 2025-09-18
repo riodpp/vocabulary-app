@@ -1,10 +1,8 @@
 use actix_web::{web, App, HttpServer, Result, middleware::Logger, HttpResponse};
-use actix_web::HttpRequest;
 use actix_cors::Cors;
 use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use std::io::Result as IoResult;
-use sqlx::PgPool;
 use reqwest::Client;
 
 mod models;
@@ -46,6 +44,7 @@ struct ExtractVocabularyRequest {
 struct ExtractVocabularyResponse {
     vocabulary: Vec<String>,
 }
+
 
 // Translation function using OpenRouter API
 async fn translate_text(text: &str, from: Option<String>, to: Option<String>) -> Result<String> {
@@ -315,6 +314,7 @@ async fn extract_vocabulary(sentence: &str) -> Result<Vec<String>> {
     Ok(vocabulary)
 }
 
+
 // Sentence explanation endpoint handler
 async fn explain_sentence_handler(
     req: web::Json<ExplainSentenceRequest>,
@@ -370,6 +370,7 @@ async fn extract_vocabulary_handler(
     }
 }
 
+
 // Translation endpoint handler
 async fn ai_translate(
     req: web::Json<TranslateRequest>,
@@ -394,9 +395,6 @@ async fn ai_translate(
 }
 
 
-struct AppState {
-    pg_pool: PgPool,         // PostgreSQL connection (may not be needed if no auth)
-}
 
 #[actix_web::main]
 async fn main() -> IoResult<()> {
@@ -406,29 +404,6 @@ async fn main() -> IoResult<()> {
     dotenv::dotenv().ok();
     println!("Environment variables loaded");
 
-    // Set up PostgreSQL connection
-    let database_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgresql://postgres:password@localhost/vocabulary_app".to_string());
-
-    println!("Connecting to PostgreSQL...");
-    let pg_pool = PgPool::connect(&database_url)
-        .await
-        .expect("Failed to connect to PostgreSQL");
-
-    // Run migrations
-    println!("Running database migrations...");
-    sqlx::migrate!("./migrations")
-        .run(&pg_pool)
-        .await
-        .expect("Failed to run migrations");
-
-    println!("PostgreSQL initialized successfully");
-    println!("Vocabulary data now handled locally in frontend - no SQLite needed");
-    println!("Authentication now handled by Supabase");
-
-    let app_state = web::Data::new(AppState {
-        pg_pool,
-    });
 
     println!("Starting HTTP server on 0.0.0.0:8080");
 
@@ -449,7 +424,6 @@ async fn main() -> IoResult<()> {
         App::new()
             .wrap(cors)
             .wrap(Logger::default())
-            .app_data(app_state.clone())
             .route("/", web::get().to(|| async { "Hello from vocabulary backend!" }))
             .route("/health", web::get().to(|| async { "OK" }))
             // Translation endpoint
