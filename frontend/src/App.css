@@ -204,7 +204,7 @@
 }
 
 .mobile-menu-toggle.active .toggle-line:nth-child(3) {
-  transform: rotate(-45deg) translate(7px, -6px);
+  transform: rotate(-45deg) translate(5px, -5px);
 }
 
 .nav-center {
@@ -382,28 +382,9 @@
   font-size: 16px;
 }
 
-/* Mobile Navigation Overlay */
-.mobile-nav-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-  z-index: 999;
-  opacity: 0;
-  visibility: hidden;
-  transition: var(--transition-normal);
-}
-
-.mobile-nav-overlay.open {
-  opacity: 1;
-  visibility: visible;
-}
-
+/* Mobile Navigation Menu */
 .mobile-nav-menu {
-  position: absolute;
+  position: fixed;
   top: 0;
   right: 0;
   width: 280px;
@@ -418,10 +399,14 @@
   display: flex;
   flex-direction: column;
   z-index: 1000;
+  pointer-events: none;
+  opacity: 0;
 }
 
-.mobile-nav-overlay.open .mobile-nav-menu {
+.mobile-nav-menu.open {
   transform: translateX(0);
+  pointer-events: auto;
+  opacity: 1;
 }
 
 /* Mobile Logo Section */
@@ -2754,6 +2739,220 @@
 
   .notification {
     min-width: auto;
+  }
+}
+
+/* Dictionary Page Mobile Responsiveness */
+@media (max-width: 768px) {
+  /* Stack directory and words vertically on mobile */
+  .dictionary-content {
+    flex-direction: column;
+    gap: var(--spacing-lg);
+  }
+
+  .directory-management {
+    flex: none;
+    width: 100%;
+    order: 1; /* Show directory management first, then words */
+  }
+
+  .words-display {
+    flex: none;
+    width: 100%;
+    order: 2;
+  }
+
+  /* Adjust directory page title */
+  .dictionary-page h1 {
+    font-size: 2rem;
+    margin-bottom: var(--spacing-3xl);
+  }
+
+  /* Directory list mobile adjustments */
+  .directory-list li {
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .directory-name {
+    font-size: 16px;
+  }
+
+  .word-count {
+    font-size: 14px;
+  }
+
+  /* Make buttons more touch-friendly */
+  .delete-dir-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 18px;
+  }
+
+  .add-directory-btn {
+    width: 100%;
+    padding: var(--spacing-lg);
+    font-size: 16px;
+  }
+
+  /* Quick word form mobile adjustments */
+  .quick-word-form {
+    padding: var(--spacing-md);
+  }
+
+  .quick-word-form .form-actions {
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+
+  .quick-word-form .translate-btn,
+  .quick-word-form button[type="submit"] {
+    width: 100%;
+    padding: var(--spacing-md);
+    font-size: 16px;
+  }
+
+  .quick-word-form .cancel-btn {
+    width: 100%;
+    padding: var(--spacing-md);
+    font-size: 16px;
+  }
+
+  /* Directory words header */
+  .directory-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+  }
+
+  .directory-header h2 {
+    font-size: 1.3em;
+    margin: 0;
+  }
+
+  .close-btn {
+    align-self: flex-end;
+    width: 32px;
+    height: 32px;
+    font-size: 20px;
+  }
+
+  /* Word items mobile layout */
+  .word-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-lg);
+  }
+
+  .word-content {
+    width: 100%;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+
+  .english-section {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .english {
+    font-size: 1.2em;
+  }
+
+  .indonesian {
+    font-size: 1em;
+  }
+
+  /* Edit section mobile */
+  .edit-section {
+    width: 100%;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+
+  .edit-section input {
+    width: 100%;
+    padding: var(--spacing-md);
+    font-size: 16px;
+  }
+
+  .save-btn, .cancel-btn {
+    width: 100%;
+    padding: var(--spacing-md);
+    font-size: 16px;
+  }
+
+  /* Action buttons in word items */
+  .speak-btn, .edit-btn, .ai-improve-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+  }
+
+  .delete-word-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 18px;
+    align-self: flex-end;
+    margin-left: 0;
+    margin-top: var(--spacing-sm);
+  }
+
+  /* Pagination mobile adjustments */
+  .pagination-controls {
+    flex-direction: column;
+    gap: var(--spacing-md);
+    padding: var(--spacing-lg);
+  }
+
+  .pagination-pages {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .pagination-page {
+    min-width: 44px;
+    height: 44px;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .pagination-btn {
+    width: 100%;
+    padding: var(--spacing-md);
+    font-size: 16px;
+  }
+
+  /* Words info mobile */
+  .words-info {
+    text-align: center;
+    padding: var(--spacing-md);
+    font-size: 14px;
+  }
+
+  /* No directory selected mobile */
+  .no-directory-selected {
+    padding: var(--spacing-2xl) var(--spacing-lg);
+    text-align: center;
+  }
+
+  .no-directory-selected h2 {
+    font-size: 1.5em;
+    margin-bottom: var(--spacing-lg);
+  }
+
+  .no-directory-selected p {
+    font-size: 1em;
+  }
+
+  /* Add word button mobile */
+  .add-word-to-directory-btn {
+    width: 100%;
+    padding: var(--spacing-lg);
+    font-size: 16px;
   }
 }
 
