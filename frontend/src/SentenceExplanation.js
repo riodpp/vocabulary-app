@@ -201,17 +201,6 @@ function SentenceExplanation({ showNotification }) {
     setCharacterCount(0);
   };
 
-  // Calculate character counts
-  const getCharacterCounts = () => {
-    const totalChars = sentence.length;
-    const words = sentence.trim().split(/\s+/).filter(word => word.length > 0);
-    const wordCounts = words.map(word => ({
-      word: word,
-      count: word.length
-    }));
-    return { totalChars, wordCounts };
-  };
-
   // Handle word inclusion toggle
   const toggleWordInclusion = (word) => {
     const newIncluded = new Set(includedWords);
