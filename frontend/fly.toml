@@ -6,7 +6,7 @@ primary_region = "sin"
 [build]
   dockerfile = "Dockerfile"
   args = {
-    REACT_APP_API_URL = "https://vocabulary-app-backend.fly.dev",
+    REACT_APP_API_URL = "your-backend-api",
     REACT_APP_SUPABASE_URL = "your_dev_supabase_url",
     REACT_APP_SUPABASE_ANON_KEY = "your_dev_supabase_anon_key"
   }
