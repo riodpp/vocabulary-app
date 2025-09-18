@@ -1,17 +1,10 @@
 .auth-container {
-  min-height: 90vh;
+  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 20px;
-}
-
-/* Desktop view - 80vh */
-@media (min-width: 769px) {
-  .auth-container {
-    min-height: 70vh;
-  }
 }
 
 .auth-card {
@@ -22,6 +15,20 @@
   width: 100%;
   max-width: 400px;
   text-align: center;
+}
+
+.auth-logo {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.auth-logo .app-logo {
+  height: 60px;
+  width: 60px;
+  border-radius: 12px;
+  object-fit: contain;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .auth-card h2 {

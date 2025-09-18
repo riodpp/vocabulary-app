@@ -36,7 +36,7 @@ function Navigation({ user, onLogout }) {
         <div className="app-title">
           <div className="logo-container">
             <img src="/vocapp-logo.png" alt="Vocapp Logo" className="app-logo" />
-            <h1>Vocapp</h1>
+            <h1>Vocabularis</h1>
           </div>
           {user && (
             <div className="desktop-user-info">
@@ -142,13 +142,6 @@ function Navigation({ user, onLogout }) {
                 onClick={closeMenu}
               >
                 🔐 Login
-              </Link>
-              <Link
-                to="/register"
-                className={`nav-link ${location.pathname === '/register' ? 'active' : ''}`}
-                onClick={closeMenu}
-              >
-                📝 Sign Up
               </Link>
             </div>
           </>

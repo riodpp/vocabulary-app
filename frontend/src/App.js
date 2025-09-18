@@ -7,7 +7,6 @@ import DictionaryPage from './DictionaryPage';
 import MemorizePage from './MemorizePage';
 import SentenceExplanation from './SentenceExplanation';
 import LoginPage from './LoginPage';
-import RegisterPage from './RegisterPage';
 import NotificationContainer from './Notification';
 import ConfirmationModal from './ConfirmationModal';
 import { initializeDefaultData, isIndexedDBSupported } from './indexedDB';
@@ -139,7 +138,7 @@ function App() {
   return (
     <Router>
       <div className="App">
-        <Navigation user={user} onLogout={handleLogout} />
+        {user && <Navigation user={user} onLogout={handleLogout} />}
         <Routes>
           {/* Authentication routes */}
           <Route
@@ -152,19 +151,6 @@ function App() {
                 />
               ) : (
                 <LoginPage onLogin={handleLogin} showNotification={showNotification} />
-              )
-            }
-          />
-          <Route
-            path="/register"
-            element={
-              user ? (
-                // Redirect to home if already logged in
-                <HomePage
-                  showNotification={showNotification}
-                />
-              ) : (
-                <RegisterPage onRegister={handleLogin} showNotification={showNotification} />
               )
             }
           />
