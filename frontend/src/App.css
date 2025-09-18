@@ -200,7 +200,7 @@
 
 .mobile-menu-toggle.active .toggle-line:nth-child(2) {
   opacity: 0;
-  transform: translateX(10px);
+  transform: translateX(20px);
 }
 
 .mobile-menu-toggle.active .toggle-line:nth-child(3) {
@@ -2837,66 +2837,92 @@
     font-size: 20px;
   }
 
-  /* Word items mobile layout */
+  /* Word items mobile layout - keep compact */
   .word-item {
-    flex-direction: column;
+    flex-direction: row;
     align-items: flex-start;
-    gap: var(--spacing-sm);
+    justify-content: space-between;
+    gap: var(--spacing-md);
     padding: var(--spacing-lg);
   }
 
   .word-content {
-    width: 100%;
+    flex: 1;
+    display: flex;
     flex-direction: column;
     gap: var(--spacing-sm);
   }
 
   .english-section {
-    width: 100%;
+    display: flex;
     justify-content: space-between;
+    align-items: center;
+    width: 100%;
   }
 
   .english {
-    font-size: 1.2em;
+    font-size: 1.1em;
+    font-weight: 600;
   }
 
   .indonesian {
     font-size: 1em;
+    margin-bottom: var(--spacing-xs);
   }
 
-  /* Edit section mobile */
+  /* Edit section mobile - keep compact */
   .edit-section {
-    width: 100%;
+    display: flex;
     flex-direction: column;
     gap: var(--spacing-sm);
+    width: 100%;
   }
 
   .edit-section input {
     width: 100%;
-    padding: var(--spacing-md);
+    padding: var(--spacing-sm);
     font-size: 16px;
   }
 
   .save-btn, .cancel-btn {
     width: 100%;
-    padding: var(--spacing-md);
-    font-size: 16px;
+    padding: var(--spacing-sm);
+    font-size: 14px;
   }
 
-  /* Action buttons in word items */
+  /* Action buttons in word items - keep inline */
   .speak-btn, .edit-btn, .ai-improve-btn {
-    width: 36px;
-    height: 36px;
-    font-size: 16px;
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+    margin-left: var(--spacing-xs);
   }
 
   .delete-word-btn {
     width: 32px;
     height: 32px;
     font-size: 18px;
-    align-self: flex-end;
-    margin-left: 0;
-    margin-top: var(--spacing-sm);
+    flex-shrink: 0;
+    align-self: flex-start;
+    margin-top: 0;
+  }
+
+  /* Indonesian section with inline buttons */
+  .word-item > div:last-child:not(.edit-section) {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    margin-top: var(--spacing-xs);
+  }
+
+  .word-item > div:last-child:not(.edit-section) .indonesian {
+    flex: 1;
+    margin-bottom: 0;
+  }
+
+  .word-item > div:last-child:not(.edit-section) .edit-btn,
+  .word-item > div:last-child:not(.edit-section) .ai-improve-btn {
+    margin-left: var(--spacing-xs);
   }
 
   /* Pagination mobile adjustments */
