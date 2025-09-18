@@ -1,9 +1,15 @@
+# Development configuration
+# Use: fly deploy
 app = "vocabulary-app-frontend"
 primary_region = "sin"
 
 [build]
   dockerfile = "Dockerfile"
-  args = { REACT_APP_API_URL = "https://vocabulary-app-backend.fly.dev" }
+  args = {
+    REACT_APP_API_URL = "https://vocabulary-app-backend.fly.dev",
+    REACT_APP_SUPABASE_URL = "your_dev_supabase_url",
+    REACT_APP_SUPABASE_ANON_KEY = "your_dev_supabase_anon_key"
+  }
 
 [http_service]
   internal_port = 80
