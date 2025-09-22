@@ -86,10 +86,9 @@
   width: 100%;
   max-width: 1600px;
   margin: 0 auto;
-  padding: var(--spacing-2xl);
   font-family: var(--font-family-primary);
   background: linear-gradient(135deg, var(--gray-50) 0%, var(--gray-100) 100%);
-  min-height: 100vh;
+  height: 100vh;
   color: var(--gray-800);
   line-height: 1.6;
   box-sizing: border-box;
