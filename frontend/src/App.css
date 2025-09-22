@@ -2023,9 +2023,6 @@
 
 
 @media (max-width: 600px) {
-  .App {
-    padding: 10px;
-  }
 
   .App h1 {
     font-size: 2em;
